@@ -163,6 +163,9 @@
 
   // Initialize the extension
   function init() {
+    // Inject universal CSS fixes for overlay elements that block image interaction
+    injectUniversalFixes();
+
     // Use event delegation for better performance
     document.addEventListener(
       'mouseenter',
@@ -206,6 +209,67 @@
 
     // Hide overlay when the window loses focus
     window.addEventListener('blur', hideEnlargedImage);
+  }
+
+  // Inject universal CSS fixes for blocking overlay elements
+  function injectUniversalFixes() {
+    const style = document.createElement('style');
+    style.textContent = `
+      /* Universal fixes for elements that block image mouse events */
+      /* Instagram overlays */
+      ._aagw {
+        pointer-events: none !important;
+      }
+
+      /* Common overlay patterns that block image interaction */
+      [style*="position: absolute"][style*="inset: 0"]:not(img):not(video):empty {
+        pointer-events: none !important;
+      }
+
+      /* Additional common patterns for empty overlays */
+      div[style*="position: absolute"]:empty,
+      div[style*="position: fixed"]:empty {
+        pointer-events: none !important;
+      }
+
+      /* Pinterest overlays */
+      div[data-test-id*="overlay"]:empty {
+        pointer-events: none !important;
+      }
+
+      /* Twitter/X overlays */
+      div[data-testid*="overlay"]:empty {
+        pointer-events: none !important;
+      }
+
+      /* Facebook/Meta overlays */
+      div[role="presentation"]:empty {
+        pointer-events: none !important;
+      }
+
+      /* Generic overlay class patterns */
+      .overlay:empty,
+      .image-overlay:empty,
+      .hover-overlay:empty,
+      .transparent-overlay:empty,
+      .block-overlay:empty {
+        pointer-events: none !important;
+      }
+
+      /* Site-specific fixes */
+      /* Tumblr image overlays */
+      .post-content .image-wrapper > div:empty {
+        pointer-events: none !important;
+      }
+
+      /* Reddit image overlays */
+      ._1JmnMJclrTwTPpAip5U_Hm:empty {
+        pointer-events: none !important;
+      }
+    `;
+
+    // Insert at the beginning of head to ensure lower specificity doesn't override
+    document.head.insertBefore(style, document.head.firstChild);
   }
 
   // Wait for DOM to be ready

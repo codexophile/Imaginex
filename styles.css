@@ -26,6 +26,41 @@
   pointer-events: none;
 }
 
+/* Universal fixes for elements that block image mouse events */
+/* Instagram overlays */
+._aagw {
+  pointer-events: none !important;
+}
+
+/* Common overlay patterns that block image interaction */
+[style*='position: absolute'][style*='inset: 0']:not(img):not(video):empty {
+  pointer-events: none !important;
+}
+
+/* Additional common patterns */
+div[style*='position: absolute']:empty,
+div[style*='position: fixed']:empty {
+  pointer-events: none !important;
+}
+
+/* Pinterest overlays */
+div[data-test-id*='overlay']:empty {
+  pointer-events: none !important;
+}
+
+/* Twitter/X overlays */
+div[data-testid*='overlay']:empty {
+  pointer-events: none !important;
+}
+
+/* Generic overlay class patterns */
+.overlay:empty,
+.image-overlay:empty,
+.hover-overlay:empty,
+.transparent-overlay:empty {
+  pointer-events: none !important;
+}
+
 /* Animation for smooth appearance */
 @keyframes enlargeIn {
   from {
