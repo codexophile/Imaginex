@@ -59,21 +59,76 @@
     const overlayRect = overlay.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
+    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
 
-    let left = mouseX + 15; // Default: 15px to the right of cursor
-    let top = mouseY - overlayRect.height / 2; // Center vertically on cursor
+    const margin = 15; // Distance from cursor and screen edges
+    const overlayWidth = overlayRect.width;
+    const overlayHeight = overlayRect.height;
 
-    // Adjust horizontal position if overlay would go off-screen
-    if (left + overlayRect.width > viewportWidth - 10) {
-      left = mouseX - overlayRect.width - 15; // Show to the left of cursor
+    // Calculate initial position (15px to the right of cursor, centered vertically)
+    let left = mouseX + margin;
+    let top = mouseY - overlayHeight / 2;
+
+    // Horizontal positioning with fallback options
+    if (left + overlayWidth > viewportWidth - margin) {
+      // Try positioning to the left of cursor
+      const leftPosition = mouseX - overlayWidth - margin;
+      if (leftPosition >= margin) {
+        left = leftPosition;
+      } else {
+        // If neither side works, center horizontally and ensure it fits
+        left = Math.max(
+          margin,
+          Math.min(
+            viewportWidth - overlayWidth - margin,
+            (viewportWidth - overlayWidth) / 2
+          )
+        );
+      }
     }
 
-    // Adjust vertical position if overlay would go off-screen
-    if (top < 10) {
-      top = 10;
-    } else if (top + overlayRect.height > viewportHeight - 10) {
-      top = viewportHeight - overlayRect.height - 10;
+    // Ensure left position is not negative
+    left = Math.max(margin, left);
+
+    // Vertical positioning with fallback options
+    if (top < margin) {
+      // Too high, position below cursor
+      top = mouseY + margin;
+      if (top + overlayHeight > viewportHeight - margin) {
+        // If below cursor also doesn't fit, center vertically
+        top = Math.max(
+          margin,
+          Math.min(
+            viewportHeight - overlayHeight - margin,
+            (viewportHeight - overlayHeight) / 2
+          )
+        );
+      }
+    } else if (top + overlayHeight > viewportHeight - margin) {
+      // Too low, position above cursor
+      top = mouseY - overlayHeight - margin;
+      if (top < margin) {
+        // If above cursor also doesn't fit, center vertically
+        top = Math.max(
+          margin,
+          Math.min(
+            viewportHeight - overlayHeight - margin,
+            (viewportHeight - overlayHeight) / 2
+          )
+        );
+      }
     }
+
+    // Final bounds check to ensure overlay stays within viewport
+    left = Math.max(
+      margin,
+      Math.min(left, viewportWidth - overlayWidth - margin)
+    );
+    top = Math.max(
+      margin,
+      Math.min(top, viewportHeight - overlayHeight - margin)
+    );
 
     overlay.style.left = left + 'px';
     overlay.style.top = top + 'px';
@@ -89,22 +144,48 @@
     overlayImg.src = img.src;
     overlayImg.alt = img.alt || '';
 
-    // Set natural dimensions or reasonable max size
-    const maxWidth = Math.min(img.naturalWidth, window.innerWidth * 0.9);
-    const maxHeight = Math.min(img.naturalHeight, window.innerHeight * 0.9);
+    // Calculate maximum dimensions considering viewport and margins
+    const margin = 30; // Total margin (15px on each side)
+    const maxViewportWidth = window.innerWidth - margin;
+    const maxViewportHeight = window.innerHeight - margin;
 
-    overlayImg.style.maxWidth = maxWidth + 'px';
-    overlayImg.style.maxHeight = maxHeight + 'px';
+    // Determine optimal size while preserving aspect ratio
+    let displayWidth = Math.min(img.naturalWidth, maxViewportWidth);
+    let displayHeight = Math.min(img.naturalHeight, maxViewportHeight);
+
+    // If image is too large, scale it down proportionally
+    const aspectRatio = img.naturalWidth / img.naturalHeight;
+
+    if (displayWidth / displayHeight > aspectRatio) {
+      // Width is the limiting factor
+      displayWidth = displayHeight * aspectRatio;
+    } else {
+      // Height is the limiting factor
+      displayHeight = displayWidth / aspectRatio;
+    }
+
+    // Ensure minimum readable size but not larger than natural size
+    displayWidth = Math.min(Math.max(displayWidth, 200), img.naturalWidth);
+    displayHeight = Math.min(Math.max(displayHeight, 150), img.naturalHeight);
+
+    overlayImg.style.width = displayWidth + 'px';
+    overlayImg.style.height = displayHeight + 'px';
+    overlayImg.style.maxWidth = displayWidth + 'px';
+    overlayImg.style.maxHeight = displayHeight + 'px';
 
     hoverOverlay.style.display = 'block';
 
     // Wait for image to load and get dimensions, then position
     overlayImg.onload = () => {
+      // Force a reflow to ensure dimensions are calculated correctly
+      hoverOverlay.offsetHeight;
       positionOverlay(hoverOverlay, mouseX, mouseY);
     };
 
     // If image is already loaded, position immediately
     if (overlayImg.complete) {
+      // Force a reflow to ensure dimensions are calculated correctly
+      hoverOverlay.offsetHeight;
       positionOverlay(hoverOverlay, mouseX, mouseY);
     }
   }
@@ -209,6 +290,21 @@
 
     // Hide overlay when the window loses focus
     window.addEventListener('blur', hideEnlargedImage);
+
+    // Reposition overlay on window resize to keep it in bounds
+    window.addEventListener('resize', function () {
+      if (
+        hoverOverlay &&
+        hoverOverlay.style.display === 'block' &&
+        currentImg
+      ) {
+        // Get current mouse position from the last known position or center of viewport
+        const rect = currentImg.getBoundingClientRect();
+        const mouseX = rect.left + rect.width / 2;
+        const mouseY = rect.top + rect.height / 2;
+        positionOverlay(hoverOverlay, mouseX, mouseY);
+      }
+    });
   }
 
   // Inject universal CSS fixes for blocking overlay elements

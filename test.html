@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Imaginex Test Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    .test-section {
+      margin: 40px 0;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    .corner-tests {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      min-height: 80vh;
+    }
+
+    .corner {
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 20px;
+    }
+
+    .corner.top-left {
+      align-items: flex-start;
+      justify-content: flex-start;
+    }
+
+    .corner.top-right {
+      align-items: flex-start;
+      justify-content: flex-end;
+    }
+
+    .corner.bottom-left {
+      align-items: flex-end;
+      justify-content: flex-start;
+    }
+
+    .corner.bottom-right {
+      align-items: flex-end;
+      justify-content: flex-end;
+    }
+
+    .small-image {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border: 2px solid #333;
+      cursor: pointer;
+    }
+
+    .medium-image {
+      width: 200px;
+      height: 150px;
+      object-fit: cover;
+      border: 2px solid #333;
+      cursor: pointer;
+    }
+
+    h2 {
+      color: #333;
+      border-bottom: 2px solid #007acc;
+      padding-bottom: 5px;
+    }
+
+    p {
+      color: #666;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Imaginex Extension Test Page</h1>
+  <p>This page tests the popup positioning to ensure it never goes off-screen. Hover over the images to see the enlarged
+    preview.</p>
+
+  <div class="test-section">
+    <h2>Corner Position Tests</h2>
+    <p>Test images positioned at different corners of the viewport to verify popup stays within screen bounds.</p>
+
+    <div class="corner-tests">
+      <div class="corner top-left">
+        <img src="https://picsum.photos/800/600?random=1" alt="Top Left Test" class="small-image">
+      </div>
+      <div class="corner top-right">
+        <img src="https://picsum.photos/800/600?random=2" alt="Top Right Test" class="small-image">
+      </div>
+      <div class="corner bottom-left">
+        <img src="https://picsum.photos/800/600?random=3" alt="Bottom Left Test" class="small-image">
+      </div>
+      <div class="corner bottom-right">
+        <img src="https://picsum.photos/800/600?random=4" alt="Bottom Right Test" class="small-image">
+      </div>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Large Image Tests</h2>
+    <p>Test with very large images to ensure they're properly scaled to fit within viewport bounds.</p>
+
+    <img src="https://picsum.photos/2000/1500?random=5" alt="Very Large Image 1" class="small-image">
+    <img src="https://picsum.photos/3000/2000?random=6" alt="Very Large Image 2" class="small-image">
+    <img src="https://picsum.photos/4000/3000?random=7" alt="Extremely Large Image" class="small-image">
+  </div>
+
+  <div class="test-section">
+    <h2>Different Aspect Ratios</h2>
+    <p>Test images with various aspect ratios to ensure proper scaling and positioning.</p>
+
+    <img src="https://picsum.photos/1200/400?random=8" alt="Wide Image" class="small-image">
+    <img src="https://picsum.photos/400/1200?random=9" alt="Tall Image" class="small-image">
+    <img src="https://picsum.photos/800/800?random=10" alt="Square Image" class="small-image">
+  </div>
+
+  <div class="test-section">
+    <h2>Edge Cases</h2>
+    <p>Test images positioned near screen edges with medium display sizes.</p>
+
+    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
+      <img src="https://picsum.photos/1600/1200?random=11" alt="Edge Case 1" class="medium-image">
+      <img src="https://picsum.photos/1600/1200?random=12" alt="Edge Case 2" class="medium-image">
+    </div>
+
+    <div style="display: flex; justify-content: center; margin-top: 20px;">
+      <img src="https://picsum.photos/1600/1200?random=13" alt="Center Test" class="medium-image">
+    </div>
+  </div>
+
+  <div
+    style="height: 500px; display: flex; align-items: center; justify-content: center; background: #f0f0f0; margin-top: 40px; border-radius: 8px;">
+    <div style="text-align: center;">
+      <h3>Scroll Test Area</h3>
+      <p>Image positioned in the middle of a tall section</p>
+      <img src="https://picsum.photos/1000/750?random=14" alt="Scroll Test" class="small-image">
+    </div>
+  </div>
+
+  <script>
+    // Add some logging to help debug if needed
+    console.log( 'Test page loaded. Viewport size:', window.innerWidth + 'x' + window.innerHeight );
+
+    // Add resize listener to log viewport changes
+    window.addEventListener( 'resize', () => {
+      console.log( 'Viewport resized to:', window.innerWidth + 'x' + window.innerHeight );
+    } );
+  </script>
+</body>
+
+</html>
