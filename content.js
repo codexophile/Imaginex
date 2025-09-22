@@ -267,7 +267,7 @@
     const overlayImg = hoverOverlay.querySelector('img');
     const bestImageSource = getBestImageSource(img);
     const bestDimensions = getBestImageDimensions(img);
-    
+
     overlayImg.src = bestImageSource;
     overlayImg.alt = img.alt || '';
 
