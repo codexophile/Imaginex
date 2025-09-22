@@ -16,8 +16,6 @@
             z-index: 999999;
             pointer-events: none;
             display: none;
-            max-width: 90vw;
-            max-height: 90vh;
             border-radius: 4px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
             overflow: hidden;
@@ -26,8 +24,8 @@
     const img = document.createElement('img');
     img.style.cssText = `
             display: block;
-            max-width: 100%;
-            max-height: 100%;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
         `;
 
@@ -277,7 +275,8 @@
     );
 
     // Calculate maximum dimensions considering viewport and margins
-    const margin = 30; // Total margin (15px on each side)
+    // Calculate maximum available space (leaving margin for positioning)
+    const margin = 30; // Total margin for sizing (15px on each side)
     const maxViewportWidth = window.innerWidth - margin;
     const maxViewportHeight = window.innerHeight - margin;
 
@@ -300,10 +299,12 @@
     displayWidth = Math.min(Math.max(displayWidth, 200), img.naturalWidth);
     displayHeight = Math.min(Math.max(displayHeight, 150), img.naturalHeight);
 
+    // Set both the overlay container and image dimensions to prevent overflow cropping
+    hoverOverlay.style.width = displayWidth + 'px';
+    hoverOverlay.style.height = displayHeight + 'px';
+
     overlayImg.style.width = displayWidth + 'px';
     overlayImg.style.height = displayHeight + 'px';
-    overlayImg.style.maxWidth = displayWidth + 'px';
-    overlayImg.style.maxHeight = displayHeight + 'px';
 
     hoverOverlay.style.display = 'block';
 
