@@ -4,6 +4,7 @@
   let hoverOverlay = null;
   let currentImg = null;
   let hoverTimer = null;
+  let noPopupTooltip = null;
   const HOVER_DELAY = 300; // milliseconds to wait before showing enlarged image
 
   // Create the hover overlay element
@@ -49,6 +50,21 @@
     // Check if the image is displayed significantly smaller than its natural size
     const widthRatio = img.naturalWidth / displayWidth;
     const heightRatio = img.naturalHeight / displayHeight;
+
+    console.log(
+      'Image scale check:',
+      img.src,
+      'Natural:',
+      img.naturalWidth + 'x' + img.naturalHeight,
+      'Display:',
+      displayWidth + 'x' + displayHeight,
+      'Width ratio:',
+      widthRatio.toFixed(2),
+      'Height ratio:',
+      heightRatio.toFixed(2),
+      'Will enlarge:',
+      widthRatio > 1.2 || heightRatio > 1.2
+    );
 
     // Only show if the image is scaled down by at least 20% in either dimension
     return widthRatio > 1.2 || heightRatio > 1.2;
@@ -190,10 +206,75 @@
     }
   }
 
+  // Create tooltip for no-popup indication
+  function createNoPopupTooltip() {
+    const tooltip = document.createElement('div');
+    tooltip.id = 'image-enlarger-no-popup-tooltip';
+    tooltip.style.cssText = `
+        position: fixed;
+        z-index: 1000000;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        pointer-events: none;
+        display: none;
+        white-space: nowrap;
+    `;
+    tooltip.textContent = 'Image already at optimal size';
+    document.body.appendChild(tooltip);
+    return tooltip;
+  }
+
+  // Show visual indicator for images that won't be enlarged
+  function showNoPopupIndicator(img) {
+    console.log(
+      'Showing no-popup indicator for image:',
+      img.src,
+      'Natural:',
+      img.naturalWidth + 'x' + img.naturalHeight,
+      'Display:',
+      img.getBoundingClientRect().width +
+        'x' +
+        img.getBoundingClientRect().height
+    );
+    img.classList.add('image-enlarger-no-popup');
+
+    // Show tooltip
+    if (!noPopupTooltip) {
+      noPopupTooltip = createNoPopupTooltip();
+    }
+
+    const rect = img.getBoundingClientRect();
+    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+
+    noPopupTooltip.style.left =
+      rect.left + scrollX + rect.width / 2 - 80 + 'px';
+    noPopupTooltip.style.top = rect.top + scrollY - 30 + 'px';
+    noPopupTooltip.style.display = 'block';
+  }
+
+  // Hide visual indicator
+  function hideNoPopupIndicator(img) {
+    if (img) {
+      img.classList.remove('image-enlarger-no-popup');
+    }
+    if (noPopupTooltip) {
+      noPopupTooltip.style.display = 'none';
+    }
+  }
+
   // Hide the enlarged image
   function hideEnlargedImage() {
     if (hoverOverlay) {
       hoverOverlay.style.display = 'none';
+    }
+    // Also remove any visual indicators
+    if (currentImg) {
+      hideNoPopupIndicator(currentImg);
     }
     currentImg = null;
     if (hoverTimer) {
@@ -220,8 +301,13 @@
 
     // Set timer to show enlarged image after delay
     hoverTimer = setTimeout(() => {
-      if (currentImg === img && isImageScaledDown(img)) {
-        showEnlargedImage(img, event.clientX, event.clientY);
+      if (currentImg === img) {
+        if (isImageScaledDown(img)) {
+          showEnlargedImage(img, event.clientX, event.clientY);
+        } else {
+          // Show visual indicator that image won't be enlarged
+          showNoPopupIndicator(img);
+        }
       }
     }, HOVER_DELAY);
   }

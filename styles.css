@@ -76,3 +76,37 @@ div[data-testid*='overlay']:empty {
 #image-enlarger-overlay {
   animation: enlargeIn 0.2s ease-out;
 }
+
+/* Visual indicator for images that won't show popup */
+.image-enlarger-no-popup {
+  outline: 3px solid rgba(255, 140, 0, 0.8) !important;
+  outline-offset: 2px !important;
+  transition: outline 0.2s ease-in-out !important;
+  box-shadow: 0 0 10px rgba(255, 140, 0, 0.4) !important;
+}
+
+/* Alternative subtle border effect */
+.image-enlarger-no-popup-alt {
+  box-shadow: 0 0 0 2px rgba(255, 165, 0, 0.6), 0 0 8px rgba(255, 165, 0, 0.3) !important;
+  transition: box-shadow 0.2s ease-in-out !important;
+}
+
+/* Pulse animation for no-popup indicator */
+@keyframes nopopup-pulse {
+  0% {
+    outline-color: rgba(255, 140, 0, 0.8);
+    box-shadow: 0 0 10px rgba(255, 140, 0, 0.4);
+  }
+  50% {
+    outline-color: rgba(255, 140, 0, 0.5);
+    box-shadow: 0 0 15px rgba(255, 140, 0, 0.2);
+  }
+  100% {
+    outline-color: rgba(255, 140, 0, 0.8);
+    box-shadow: 0 0 10px rgba(255, 140, 0, 0.4);
+  }
+}
+
+.image-enlarger-no-popup {
+  animation: nopopup-pulse 2s ease-in-out infinite;
+}

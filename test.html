@@ -3,84 +3,109 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Imaginex Test Page</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      margin: 0;
-      min-height: 100vh;
-    }
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" <div class="test-section">
+  <h2>No Popup Images (Visual Indicator Test)</h2>
+  <p>These images are displayed at or near their natural size, so they shouldn't show the enlarged popup. Instead, you
+    should see a subtle orange outline indicator when hovering.</p>
 
-    .test-section {
-      margin: 40px 0;
-      padding: 20px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-    }
+  <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start;">
+    <div style="text-align: center;">
+      <p style="font-size: 12px; color: #888;">300x200 image displayed at natural size</p>
+      <img src="https://picsum.photos/300/200?random=15" alt="Natural Size Image"
+        style="width: 300px; height: 200px; border: 1px solid #ccc;">
+    </div>
+    <div style="text-align: center;">
+      <p style="font-size: 12px; color: #888;">400x300 image displayed at 90% size</p>
+      <img src="https://picsum.photos/400/300?random=16" alt="Near Natural Size Image"
+        style="width: 360px; height: 270px; border: 1px solid #ccc;">
+    </div>
+    <div style="text-align: center;">
+      <p style="font-size: 12px; color: #888;">200x200 square image at natural size</p>
+      <img src="https://picsum.photos/200/200?random=17" alt="Square Natural Size"
+        style="width: 200px; height: 200px; border: 1px solid #ccc;">
+    </div>
+  </div>
+  </div>
 
-    .corner-tests {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      min-height: 80vh;
-    }
+  <div
+    style="height: 500px; display: flex; align-items: center; justify-content: center; background: #f0f0f0; margin-top: 40px; border-radius: 8px;"
+    &gt; <title>Imaginex Test Page</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        margin: 0;
+        min-height: 100vh;
+      }
 
-    .corner {
-      display: flex;
-      align-items: flex-start;
-      justify-content: flex-start;
-      padding: 20px;
-    }
+      .test-section {
+        margin: 40px 0;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+      }
 
-    .corner.top-left {
-      align-items: flex-start;
-      justify-content: flex-start;
-    }
+      .corner-tests {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        min-height: 80vh;
+      }
 
-    .corner.top-right {
-      align-items: flex-start;
-      justify-content: flex-end;
-    }
+      .corner {
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-start;
+        padding: 20px;
+      }
 
-    .corner.bottom-left {
-      align-items: flex-end;
-      justify-content: flex-start;
-    }
+      .corner.top-left {
+        align-items: flex-start;
+        justify-content: flex-start;
+      }
 
-    .corner.bottom-right {
-      align-items: flex-end;
-      justify-content: flex-end;
-    }
+      .corner.top-right {
+        align-items: flex-start;
+        justify-content: flex-end;
+      }
 
-    .small-image {
-      width: 100px;
-      height: 100px;
-      object-fit: cover;
-      border: 2px solid #333;
-      cursor: pointer;
-    }
+      .corner.bottom-left {
+        align-items: flex-end;
+        justify-content: flex-start;
+      }
 
-    .medium-image {
-      width: 200px;
-      height: 150px;
-      object-fit: cover;
-      border: 2px solid #333;
-      cursor: pointer;
-    }
+      .corner.bottom-right {
+        align-items: flex-end;
+        justify-content: flex-end;
+      }
 
-    h2 {
-      color: #333;
-      border-bottom: 2px solid #007acc;
-      padding-bottom: 5px;
-    }
+      .small-image {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border: 2px solid #333;
+        cursor: pointer;
+      }
 
-    p {
-      color: #666;
-      margin-bottom: 15px;
-    }
-  </style>
+      .medium-image {
+        width: 200px;
+        height: 150px;
+        object-fit: cover;
+        border: 2px solid #333;
+        cursor: pointer;
+      }
+
+      h2 {
+        color: #333;
+        border-bottom: 2px solid #007acc;
+        padding-bottom: 5px;
+      }
+
+      p {
+        color: #666;
+        margin-bottom: 15px;
+      }
+    </style>
 </head>
 
 <body>
@@ -88,9 +113,22 @@
   <p>This page tests the popup positioning to ensure it never goes off-screen. Hover over the images to see the enlarged
     preview.</p>
 
+  <div style="background: #e8f4ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #007acc;">
+    <h3 style="margin-top: 0; color: #005a9e;">Visual Feedback Guide:</h3>
+    <ul style="margin-bottom: 0;">
+      <li><strong>Enlarged Popup:</strong> Images that are significantly smaller than their natural size will show an
+        enlarged popup when hovered</li>
+      <li><strong>Orange Pulsing Border:</strong> Images that are already at optimal size will show a pulsing orange
+        border and tooltip saying "Image already at optimal size"</li>
+      <li><strong>No Effect:</strong> Very large images or images that fail to load properly will show no effect</li>
+    </ul>
+  </div>
+
   <div class="test-section">
     <h2>Corner Position Tests</h2>
-    <p>Test images positioned at different corners of the viewport to verify popup stays within screen bounds.</p>
+    <p>Test images positioned at different corners of the viewport to verify popup stays within screen bounds.
+      <strong>These should show enlarged popups</strong> because they are 100x100px display size but have 800x600px
+      natural dimensions.</p>
 
     <div class="corner-tests">
       <div class="corner top-left">
@@ -110,7 +148,9 @@
 
   <div class="test-section">
     <h2>Large Image Tests</h2>
-    <p>Test with very large images to ensure they're properly scaled to fit within viewport bounds.</p>
+    <p>Test with very large images to ensure they're properly scaled to fit within viewport bounds. <strong>These should
+        show enlarged popups</strong> because the natural dimensions are much larger than the 100x100px display size.
+    </p>
 
     <img src="https://picsum.photos/2000/1500?random=5" alt="Very Large Image 1" class="small-image">
     <img src="https://picsum.photos/3000/2000?random=6" alt="Very Large Image 2" class="small-image">
