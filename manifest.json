@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Image Enlarger",
+  "version": "1.0.0",
+  "description": "Displays larger size images when hovering over images that are smaller than their actual dimensions",
+  "permissions": [
+    "activeTab"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "host_permissions": [
+    "<all_urls>"
+  ]
+}

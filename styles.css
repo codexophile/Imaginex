@@ -1,0 +1,43 @@
+/* Image Enlarger Extension Styles */
+
+#image-enlarger-overlay {
+  /* Base styles are set in JavaScript for dynamic positioning */
+  background: #fff;
+  border: 2px solid #ddd;
+  transition: opacity 0.2s ease-in-out;
+  opacity: 1;
+}
+
+#image-enlarger-overlay img {
+  /* Ensure smooth loading */
+  transition: opacity 0.1s ease-in-out;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  #image-enlarger-overlay {
+    background: #333;
+    border-color: #555;
+  }
+}
+
+/* Ensure overlay doesn't interfere with page interactions */
+#image-enlarger-overlay * {
+  pointer-events: none;
+}
+
+/* Animation for smooth appearance */
+@keyframes enlargeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+#image-enlarger-overlay {
+  animation: enlargeIn 0.2s ease-out;
+}
