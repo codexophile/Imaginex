@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Image Enlarger",
+  "name": "Imaginex",
   "version": "1.0.0",
   "description": "Displays larger size images when hovering over images that are smaller than their actual dimensions",
   "permissions": [
