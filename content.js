@@ -37,6 +37,105 @@
     return overlay;
   }
 
+  // Parse srcset attribute and return the best image source
+  function getBestImageSource(img) {
+    const srcset = img.getAttribute('srcset');
+
+    if (!srcset) {
+      return img.src;
+    }
+
+    const candidates = [];
+    const sources = srcset.split(',');
+
+    for (const source of sources) {
+      const trimmed = source.trim();
+      const parts = trimmed.split(/\s+/);
+
+      if (parts.length >= 2) {
+        const url = parts[0];
+        const descriptor = parts[1];
+
+        if (descriptor.endsWith('x')) {
+          // Pixel density descriptor (e.g., "2x", "3x")
+          const density = parseFloat(descriptor.slice(0, -1));
+          candidates.push({ url, density, type: 'density' });
+        } else if (descriptor.endsWith('w')) {
+          // Width descriptor (e.g., "800w", "1200w")
+          const width = parseInt(descriptor.slice(0, -1));
+          candidates.push({ url, width, type: 'width' });
+        }
+      } else if (parts.length === 1) {
+        // No descriptor, assume 1x density
+        candidates.push({ url: parts[0], density: 1, type: 'density' });
+      }
+    }
+
+    if (candidates.length === 0) {
+      return img.src;
+    }
+
+    // Sort candidates to find the best one
+    if (candidates[0].type === 'density') {
+      // For density descriptors, get the highest density
+      candidates.sort((a, b) => (b.density || 1) - (a.density || 1));
+      return candidates[0].url;
+    } else {
+      // For width descriptors, get the largest width
+      candidates.sort((a, b) => (b.width || 0) - (a.width || 0));
+      return candidates[0].url;
+    }
+  }
+
+  // Get dimensions information for the best image source (including srcset)
+  function getBestImageDimensions(img) {
+    const bestSource = getBestImageSource(img);
+    const srcset = img.getAttribute('srcset');
+
+    // If no srcset or best source is the same as current src, use current dimensions
+    if (!srcset || bestSource === img.src) {
+      return {
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        source: bestSource,
+      };
+    }
+
+    // Try to extract dimensions from srcset width descriptors
+    const sources = srcset.split(',');
+    for (const source of sources) {
+      const trimmed = source.trim();
+      const parts = trimmed.split(/\s+/);
+
+      if (
+        parts.length >= 2 &&
+        parts[0] === bestSource &&
+        parts[1].endsWith('w')
+      ) {
+        const width = parseInt(parts[1].slice(0, -1));
+        // Estimate height based on current image's aspect ratio
+        const currentAspectRatio = img.naturalWidth / img.naturalHeight;
+        const estimatedHeight = Math.round(width / currentAspectRatio);
+
+        return {
+          width: width,
+          height: estimatedHeight,
+          source: bestSource,
+          estimated: true,
+        };
+      }
+    }
+
+    // For density descriptors or when we can't determine from srcset,
+    // we'll need to load the image to get exact dimensions
+    // For now, return current dimensions as fallback
+    return {
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+      source: bestSource,
+    };
+  }
+
   // Check if an image is scaled down from its natural size
   function isImageScaledDown(img) {
     if (!img.complete || img.naturalWidth === 0 || img.naturalHeight === 0) {
@@ -47,15 +146,24 @@
     const displayWidth = rect.width;
     const displayHeight = rect.height;
 
-    // Check if the image is displayed significantly smaller than its natural size
-    const widthRatio = img.naturalWidth / displayWidth;
-    const heightRatio = img.naturalHeight / displayHeight;
+    // Get the best available image dimensions (considering srcset)
+    const bestDimensions = getBestImageDimensions(img);
+    const naturalWidth = bestDimensions.width;
+    const naturalHeight = bestDimensions.height;
+
+    // Check if the image is displayed significantly smaller than its best available size
+    const widthRatio = naturalWidth / displayWidth;
+    const heightRatio = naturalHeight / displayHeight;
 
     console.log(
       'Image scale check:',
-      img.src,
-      'Natural:',
-      img.naturalWidth + 'x' + img.naturalHeight,
+      'Best source:',
+      bestDimensions.source,
+      'Best dimensions:',
+      naturalWidth +
+        'x' +
+        naturalHeight +
+        (bestDimensions.estimated ? ' (estimated)' : ''),
       'Display:',
       displayWidth + 'x' + displayHeight,
       'Width ratio:',
@@ -157,8 +265,16 @@
     }
 
     const overlayImg = hoverOverlay.querySelector('img');
-    overlayImg.src = img.src;
+    const bestImageSource = getBestImageSource(img);
+    overlayImg.src = bestImageSource;
     overlayImg.alt = img.alt || '';
+
+    console.log(
+      'Using image source for enlargement:',
+      bestImageSource,
+      'from element:',
+      img
+    );
 
     // Calculate maximum dimensions considering viewport and margins
     const margin = 30; // Total margin (15px on each side)
@@ -337,7 +453,6 @@
     document.addEventListener(
       'mouseenter',
       function (event) {
-        console.log(event.target);
         if (event.target.tagName === 'IMG') {
           handleImageMouseEnter(event);
         }

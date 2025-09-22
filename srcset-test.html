@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Srcset Test - Imaginex Extension</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+      background: #f5f5f5;
+    }
+
+    .test-section {
+      margin: 30px 0;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .image-container {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+
+    .image-test {
+      text-align: center;
+      max-width: 300px;
+    }
+
+    .image-test img {
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      transition: border-color 0.2s;
+    }
+
+    .image-test img:hover {
+      border-color: #007acc;
+    }
+
+    .description {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 10px;
+      padding: 5px;
+      background: #f8f8f8;
+      border-radius: 4px;
+    }
+
+    code {
+      background: #e8e8e8;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Srcset Support Test - Imaginex Extension</h1>
+  <p>This page tests the srcset functionality of the Imaginex image enlarger extension. Hover over the images below to
+    see if the extension correctly uses the highest resolution images from the srcset attribute.</p>
+
+  <div class="test-section">
+    <h2>Pixel Density Descriptors (x)</h2>
+    <p>These images use pixel density descriptors (1x, 2x, 3x). The extension should pick the highest density version.
+    </p>
+
+    <div class="image-container">
+      <div class="image-test">
+        <div class="description">
+          Basic 2x srcset<br>
+          <code>srcset="300x200 1x, 600x400 2x"</code>
+        </div>
+        <img src="https://picsum.photos/300/200?random=1"
+          srcset="https://picsum.photos/300/200?random=1 1x, https://picsum.photos/600/400?random=1 2x"
+          alt="2x Density Test" style="width: 150px; height: 100px;">
+      </div>
+
+      <div class="image-test">
+        <div class="description">
+          Triple density srcset<br>
+          <code>srcset="200x150 1x, 400x300 2x, 600x450 3x"</code>
+        </div>
+        <img src="https://picsum.photos/200/150?random=2"
+          srcset="https://picsum.photos/200/150?random=2 1x, https://picsum.photos/400/300?random=2 2x, https://picsum.photos/600/450?random=2 3x"
+          alt="3x Density Test" style="width: 120px; height: 90px;">
+      </div>
+
+      <div class="image-test">
+        <div class="description">
+          High density (4x) srcset<br>
+          <code>srcset="250x200 1x, 1000x800 4x"</code>
+        </div>
+        <img src="https://picsum.photos/250/200?random=3"
+          srcset="https://picsum.photos/250/200?random=3 1x, https://picsum.photos/1000/800?random=3 4x"
+          alt="4x Density Test" style="width: 125px; height: 100px;">
+      </div>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Width Descriptors (w)</h2>
+    <p>These images use width descriptors. The extension should pick the largest width version.</p>
+
+    <div class="image-container">
+      <div class="image-test">
+        <div class="description">
+          Width-based srcset<br>
+          <code>srcset="400w, 800w, 1200w"</code>
+        </div>
+        <img src="https://picsum.photos/400/300?random=4"
+          srcset="https://picsum.photos/400/300?random=4 400w, https://picsum.photos/800/600?random=4 800w, https://picsum.photos/1200/900?random=4 1200w"
+          alt="Width Descriptor Test" style="width: 160px; height: 120px;">
+      </div>
+
+      <div class="image-test">
+        <div class="description">
+          Large width variations<br>
+          <code>srcset="300w, 600w, 1000w, 1600w"</code>
+        </div>
+        <img src="https://picsum.photos/300/200?random=5"
+          srcset="https://picsum.photos/300/200?random=5 300w, https://picsum.photos/600/400?random=5 600w, https://picsum.photos/1000/667?random=5 1000w, https://picsum.photos/1600/1067?random=5 1600w"
+          alt="Large Width Test" style="width: 150px; height: 100px;">
+      </div>
+
+      <div class="image-test">
+        <div class="description">
+          Mixed small/large widths<br>
+          <code>srcset="200w, 1800w"</code>
+        </div>
+        <img src="https://picsum.photos/200/200?random=6"
+          srcset="https://picsum.photos/200/200?random=6 200w, https://picsum.photos/1800/1800?random=6 1800w"
+          alt="Mixed Width Test" style="width: 100px; height: 100px;">
+      </div>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Mixed Formats</h2>
+    <p>Testing edge cases and mixed descriptor types.</p>
+
+    <div class="image-container">
+      <div class="image-test">
+        <div class="description">
+          No descriptor (should default to 1x)<br>
+          <code>srcset="300x200, 600x400 2x"</code>
+        </div>
+        <img src="https://picsum.photos/300/200?random=7"
+          srcset="https://picsum.photos/300/200?random=7, https://picsum.photos/600/400?random=7 2x"
+          alt="No Descriptor Test" style="width: 150px; height: 100px;">
+      </div>
+
+      <div class="image-test">
+        <div class="description">
+          Single srcset entry<br>
+          <code>srcset="800x600 2x"</code>
+        </div>
+        <img src="https://picsum.photos/400/300?random=8" srcset="https://picsum.photos/800/600?random=8 2x"
+          alt="Single Srcset Test" style="width: 140px; height: 105px;">
+      </div>
+
+      <div class="image-test">
+        <div class="description">
+          No srcset (fallback to src)<br>
+          <code>src only</code>
+        </div>
+        <img src="https://picsum.photos/350/250?random=9" alt="No Srcset Test" style="width: 140px; height: 100px;">
+      </div>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Scaling Detection Test</h2>
+    <p>These tests demonstrate the importance of checking srcset dimensions for scaling detection.</p>
+
+    <div class="image-container">
+      <div class="image-test">
+        <div class="description">
+          Fallback appears "not scaled"<br>
+          <code>src="300x200" srcset="1200x800 1200w"</code><br>
+          Display: 300x200 (same as fallback src)
+        </div>
+        <img src="https://picsum.photos/300/200?random=10" srcset="https://picsum.photos/1200/800?random=10 1200w"
+          alt="Scaling Detection Test 1" style="width: 300px; height: 200px;">
+        <p style="font-size: 10px; color: #999; margin-top: 5px;">
+          OLD logic: Would NOT enlarge (300x200 display = 300x200 natural)<br>
+          NEW logic: SHOULD enlarge (300x200 display << 1200x800 best available) </p>
+      </div>
+
+      <div class="image-test">
+        <div class="description">
+          High-res srcset, small display<br>
+          <code>src="400x300" srcset="1600x1200 4x"</code><br>
+          Display: 200x150 (much smaller than 4x version)
+        </div>
+        <img src="https://picsum.photos/400/300?random=11" srcset="https://picsum.photos/1600/1200?random=11 4x"
+          alt="Scaling Detection Test 2" style="width: 200px; height: 150px;">
+        <p style="font-size: 10px; color: #999; margin-top: 5px;">
+          OLD logic: Would enlarge (200x150 display vs 400x300 natural)<br>
+          NEW logic: SHOULD enlarge (200x150 display vs 1600x1200 best available)
+        </p>
+      </div>
+
+      <div class="image-test">
+        <div class="description">
+          Edge case: No srcset<br>
+          <code>src="250x200" only</code><br>
+          Display: 200x160 (smaller than natural)
+        </div>
+        <img src="https://picsum.photos/250/200?random=12" alt="No Srcset Control" style="width: 200px; height: 160px;">
+        <p style="font-size: 10px; color: #999; margin-top: 5px;">
+          Both logic: Should enlarge (200x160 display vs 250x200 natural)
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Instructions</h2>
+    <ol>
+      <li>Open browser DevTools (F12) and go to the Console tab to see debug output</li>
+      <li>Hover over each image above - they should all show enlarged versions</li>
+      <li>Check the console logs to see which image source is being used for enlargement</li>
+      <li>Pay special attention to the "Scaling Detection Test" section above</li>
+      <li>For srcset images, the extension should use the highest resolution version available</li>
+      <li>For pixel density descriptors (x), it should pick the highest density (e.g., 4x over 2x over 1x)</li>
+      <li>For width descriptors (w), it should pick the largest width (e.g., 1600w over 800w over 400w)</li>
+      <li><strong>New:</strong> Scaling detection should now consider srcset dimensions, not just fallback src
+        dimensions</li>
+    </ol>
+  </div>
+
+  <!-- Load the extension content script -->
+  <script src="content.js"></script>
+</body>
+
+</html>
