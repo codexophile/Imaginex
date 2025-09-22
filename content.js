@@ -155,6 +155,8 @@
 
     console.log(
       'Image scale check:',
+      'Current src:',
+      img.src,
       'Best source:',
       bestDimensions.source,
       'Best dimensions:',
@@ -264,6 +266,8 @@
 
     const overlayImg = hoverOverlay.querySelector('img');
     const bestImageSource = getBestImageSource(img);
+    const bestDimensions = getBestImageDimensions(img);
+    
     overlayImg.src = bestImageSource;
     overlayImg.alt = img.alt || '';
 
@@ -271,7 +275,10 @@
       'Using image source for enlargement:',
       bestImageSource,
       'from element:',
-      img
+      img,
+      'Best dimensions:',
+      bestDimensions.width + 'x' + bestDimensions.height,
+      bestDimensions.estimated ? '(estimated)' : '(exact)'
     );
 
     // Calculate maximum dimensions considering viewport and margins
@@ -280,12 +287,16 @@
     const maxViewportWidth = window.innerWidth - margin;
     const maxViewportHeight = window.innerHeight - margin;
 
+    // Use the best available image dimensions instead of img.naturalWidth/Height
+    const bestWidth = bestDimensions.width;
+    const bestHeight = bestDimensions.height;
+
     // Determine optimal size while preserving aspect ratio
-    let displayWidth = Math.min(img.naturalWidth, maxViewportWidth);
-    let displayHeight = Math.min(img.naturalHeight, maxViewportHeight);
+    let displayWidth = Math.min(bestWidth, maxViewportWidth);
+    let displayHeight = Math.min(bestHeight, maxViewportHeight);
 
     // If image is too large, scale it down proportionally
-    const aspectRatio = img.naturalWidth / img.naturalHeight;
+    const aspectRatio = bestWidth / bestHeight;
 
     if (displayWidth / displayHeight > aspectRatio) {
       // Width is the limiting factor
@@ -296,8 +307,8 @@
     }
 
     // Ensure minimum readable size but not larger than natural size
-    displayWidth = Math.min(Math.max(displayWidth, 200), img.naturalWidth);
-    displayHeight = Math.min(Math.max(displayHeight, 150), img.naturalHeight);
+    displayWidth = Math.min(Math.max(displayWidth, 200), bestWidth);
+    displayHeight = Math.min(Math.max(displayHeight, 150), bestHeight);
 
     // Set both the overlay container and image dimensions to prevent overflow cropping
     hoverOverlay.style.width = displayWidth + 'px';
