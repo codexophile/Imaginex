@@ -1,4 +1,10 @@
 import { loadSettings, updateSettings, subscribe } from './settings.js';
+import {
+  saveSettingsToCloud,
+  loadSettingsFromCloud,
+  signIn,
+  getCurrentUser,
+} from './cloudSync.js';
 
 const els = {};
 let initial = null;
@@ -38,6 +44,9 @@ async function init() {
   els.saveBtn = $('saveBtn');
   els.resetBtn = $('resetBtn');
   els.status = $('status');
+  els.cloudSaveBtn = $('cloudSaveBtn');
+  els.cloudLoadBtn = $('cloudLoadBtn');
+  els.cloudStatus = $('cloudStatus');
 
   const s = await loadSettings();
   initial = s;
@@ -97,6 +106,40 @@ function wireEvents() {
   });
   els.saveBtn.addEventListener('click', () => doSave(false));
   els.resetBtn.addEventListener('click', resetDefaults);
+  if (els.cloudSaveBtn) {
+    els.cloudSaveBtn.addEventListener('click', async () => {
+      els.cloudStatus.textContent = 'Saving to cloud...';
+      try {
+        await signIn(true);
+        const settings = await loadSettings();
+        await saveSettingsToCloud(settings);
+        els.cloudStatus.textContent = 'Saved to cloud.';
+      } catch (e) {
+        els.cloudStatus.textContent = 'Cloud save failed: ' + (e?.message || e);
+      }
+      setTimeout(() => {
+        els.cloudStatus.textContent = '';
+      }, 2000);
+    });
+  }
+  if (els.cloudLoadBtn) {
+    els.cloudLoadBtn.addEventListener('click', async () => {
+      els.cloudStatus.textContent = 'Loading from cloud...';
+      try {
+        await signIn(true);
+        const cloudSettings = await loadSettingsFromCloud();
+        await updateSettings(cloudSettings);
+        initial = { ...initial, ...cloudSettings };
+        bindValues(initial);
+        els.cloudStatus.textContent = 'Loaded from cloud.';
+      } catch (e) {
+        els.cloudStatus.textContent = 'Cloud load failed: ' + (e?.message || e);
+      }
+      setTimeout(() => {
+        els.cloudStatus.textContent = '';
+      }, 2000);
+    });
+  }
 }
 
 async function resetDefaults() {

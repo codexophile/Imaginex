@@ -129,12 +129,41 @@ Implementation notes:
 - `content.js` dynamically imports `settings.js` and updates the runtime hover delay without needing a full page reload.
 - A future cloud sync layer (e.g., Firestore) can wrap or extend `settings.js` without changing callers.
 
-Roadmap (planned):
+## Manual Cloud Sync
 
-- Cloud sync integration (enable account sign‑in and device sync)
-- Keyboard shortcut customization UI
-- Export / import settings JSON
-- Per‑site overrides
+You can manually save and load your extension settings to/from the cloud using Firestore:
+
+1. Open the options page.
+2. Use **Save to Cloud** to upload your current settings to your Google account (Firestore).
+3. Use **Load from Cloud** to fetch your latest cloud settings and apply them locally.
+
+Setup:
+
+- You must provide your own Firebase project credentials in `cloudSync.js` (see the placeholder `firebaseConfig`).
+- The extension will prompt you to sign in with your Google account the first time you use cloud sync.
+- Settings are stored in Firestore under the `settings/{uid}` document for your account.
+
+Security:
+
+- Only you can access your settings document (Firestore rules should restrict access to authenticated user).
+- No settings are sent to any server except your own Firestore instance.
+
+Troubleshooting:
+
+- If you see "Cloud save failed" or "Cloud load failed", check your Firebase config and authentication.
+- Make sure your Firestore rules allow read/write for authenticated users.
+
+Example Firestore rules:
+
+```
+service cloud.firestore {
+	match /databases/{database}/documents {
+		match /settings/{userId} {
+			allow read, write: if request.auth != null && request.auth.uid == userId;
+		}
+	}
+}
+```
 
 ## Privacy & Security
 

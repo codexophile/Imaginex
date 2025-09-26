@@ -202,9 +202,14 @@
     </section>
 
     <section>
-      <h2>Cloud Sync (Planned)</h2>
-      <p style="margin-top:0;">Cloud synchronization (Firestore) will appear here when enabled. For now settings are
-        stored locally.</p>
+      <h2>Cloud Sync</h2>
+      <div class="row flex">
+        <button id="cloudSaveBtn">Save to Cloud</button>
+        <button id="cloudLoadBtn">Load from Cloud</button>
+        <span id="cloudStatus"></span>
+      </div>
+      <p style="margin-top:0; font-size:13px; opacity:.7;">Manually save or load your settings to/from the cloud. Uses
+        your Google account (Firestore). Settings are always stored locally; cloud sync is manual.</p>
     </section>
 
     <div class="footer-note">Imaginex v1.0.0 &mdash; Settings stored locally. Cloud sync coming soon.</div>
