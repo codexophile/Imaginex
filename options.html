@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Imaginex Options</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg, #f5f5f5);
+    }
+
+    header {
+      padding: 16px 24px;
+      background: linear-gradient(135deg, #4b6cb7, #182848);
+      color: #fff;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    main {
+      padding: 24px;
+      max-width: 760px;
+    }
+
+    section {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px 22px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 18px -6px rgba(0, 0, 0, 0.08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      section {
+        background: #1f1f24;
+      }
+
+      body {
+        background: #141416;
+      }
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 16px;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      opacity: .85;
+    }
+
+    .setting {
+      display: flex;
+      align-items: center;
+      margin: 12px 0;
+    }
+
+    .setting label {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    input[type="number"] {
+      width: 90px;
+      padding: 4px 6px;
+    }
+
+    input[type="text"],
+    select {
+      padding: 6px 8px;
+    }
+
+    .desc {
+      font-size: 12px;
+      opacity: .7;
+      margin-left: 8px;
+    }
+
+    .inline {
+      display: inline-block;
+    }
+
+    .footer-note {
+      font-size: 11px;
+      opacity: .65;
+      text-align: center;
+      margin-top: 40px;
+    }
+
+    .shortcut-grid {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 8px 14px;
+      font-size: 13px;
+    }
+
+    code.kbd {
+      background: #222;
+      color: #eee;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-weight: 600;
+      background: #4b6cb7;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .2);
+    }
+
+    button.secondary {
+      background: #555;
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: default;
+    }
+
+    .row {
+      margin: 10px 0;
+    }
+
+    .flex {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    #status {
+      font-size: 12px;
+      margin-left: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Imaginex Settings</h1>
+  </header>
+  <main>
+    <section>
+      <h2>Display</h2>
+      <div class="setting">
+        <label for="theme">Theme</label>
+        <select id="theme">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="system">System</option>
+        </select>
+        <span class="desc">Interface theme (currently affects options page only)</span>
+      </div>
+      <div class="setting">
+        <label for="hoverDelay">Hover Delay (ms)</label>
+        <input id="hoverDelay" type="number" min="0" step="25" />
+        <span class="desc">Time to wait before enlarging</span>
+      </div>
+      <div class="setting">
+        <label for="zoom">Zoom Factor</label>
+        <input id="zoom" type="number" min="0.1" step="0.05" />
+        <span class="desc">Scaling factor for display override (future)</span>
+      </div>
+      <div class="setting">
+        <label for="enablePrefetch">Prefetch Larger Image</label>
+        <input id="enablePrefetch" type="checkbox" />
+        <span class="desc">Attempt to pre-load high-res image (future)</span>
+      </div>
+      <div class="row flex">
+        <button id="saveBtn" disabled>Saved</button>
+        <button id="resetBtn" class="secondary">Reset Defaults</button>
+        <span id="status"></span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Shortcuts (Planned)</h2>
+      <p style="margin-top:0;">Keyboard shortcuts integration will be added. Planned defaults:</p>
+      <div class="shortcut-grid">
+        <div><code class="kbd">Esc</code></div>
+        <div>Close enlarged image</div>
+        <div><code class="kbd">Arrow Keys</code></div>
+        <div>Future: Navigate gallery</div>
+        <div><code class="kbd">Shift</code> + Hover</div>
+        <div>Future: Force enlarge even if small gain</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Cloud Sync (Planned)</h2>
+      <p style="margin-top:0;">Cloud synchronization (Firestore) will appear here when enabled. For now settings are
+        stored locally.</p>
+    </section>
+
+    <div class="footer-note">Imaginex v1.0.0 &mdash; Settings stored locally. Cloud sync coming soon.</div>
+  </main>
+  <script type="module" src="options.js"></script>
+</body>
+
+</html>

@@ -5,7 +5,30 @@
   let currentImg = null;
   let hoverTimer = null;
   let noPopupTooltip = null;
-  const HOVER_DELAY = 300; // milliseconds to wait before showing enlarged image
+  let HOVER_DELAY = 300; // default; will be overridden by settings
+  // Load settings dynamically (isolated world can't use import, so we inject a script tag to access settings module if needed)
+  try {
+    // Attempt to access chrome.runtime.getURL to fetch settings module via dynamic import in MV3 content script.
+    const settingsUrl = chrome.runtime.getURL('settings.js');
+    import(settingsUrl)
+      .then(mod => {
+        if (mod && typeof mod.getSetting === 'function') {
+          mod.getSetting('hoverDelay').then(v => {
+            if (typeof v === 'number') HOVER_DELAY = v;
+          });
+          if (typeof mod.subscribe === 'function') {
+            mod.subscribe(s => {
+              if (typeof s.hoverDelay === 'number') HOVER_DELAY = s.hoverDelay;
+            });
+          }
+        }
+      })
+      .catch(() => {
+        /* ignore */
+      });
+  } catch (e) {
+    // Ignore if dynamic import not available
+  }
 
   // Create the hover overlay element
   function createOverlay() {

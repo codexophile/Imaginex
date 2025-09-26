@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "description": "Displays larger size images when hovering over images that are smaller than their actual dimensions",
   "permissions": [
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
   "content_scripts": [
     {
@@ -23,6 +24,7 @@
   "background": {
     "service_worker": "background.js"
   },
+  "options_page": "options.html",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

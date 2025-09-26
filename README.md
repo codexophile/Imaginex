@@ -111,6 +111,31 @@ const SCALE_THRESHOLD = 1.2; // Minimum scale factor (20% smaller) to trigger
 - **Styling**: Modify `styles.css` or the inline styles in `content.js`
 - **Positioning**: Adjust the logic in `positionOverlay()`
 
+## Settings & Options Page
+
+An options page (`options.html`) has been added to manage user-configurable preferences:
+
+Current settings:
+
+- Theme (light / dark / system) – currently affects options UI, future overlay styling
+- Hover Delay (ms) – overrides the delay before enlargement (`hoverDelay`)
+- Zoom Factor – placeholder for future manual scaling adjustments
+- Prefetch Larger Image – placeholder for future high‑res preloading
+
+Implementation notes:
+
+- All settings are stored locally in `chrome.storage.local` under a single key (`__settings_v1`).
+- The module `settings.js` provides a small API: `loadSettings()`, `updateSettings(patch)`, `getSetting(key)`, and `subscribe(cb)`.
+- `content.js` dynamically imports `settings.js` and updates the runtime hover delay without needing a full page reload.
+- A future cloud sync layer (e.g., Firestore) can wrap or extend `settings.js` without changing callers.
+
+Roadmap (planned):
+
+- Cloud sync integration (enable account sign‑in and device sync)
+- Keyboard shortcut customization UI
+- Export / import settings JSON
+- Per‑site overrides
+
 ## Privacy & Security
 
 - **No Data Collection**: This extension doesn't collect, store, or transmit any user data
