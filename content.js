@@ -202,6 +202,115 @@
   }
 
   // Custom rule matching and image URL extraction
+  function getSourceValue(element, source) {
+    if (!source || !source.type) return null;
+    try {
+      switch (source.type) {
+        case 'src':
+          return (
+            element.currentSrc ||
+            element.src ||
+            element.getAttribute?.('src') ||
+            null
+          );
+        case 'href': {
+          return (
+            element.href ||
+            element.getAttribute?.('href') ||
+            element.closest?.('a')?.href ||
+            null
+          );
+        }
+        case 'attr':
+          return source.name
+            ? element.getAttribute?.(source.name) || null
+            : null;
+        case 'closestAttr': {
+          if (!source.selector || !source.name) return null;
+          const closest = element.closest?.(source.selector);
+          if (!closest) return null;
+          return (
+            closest.getAttribute?.(source.name) || closest[source.name] || null
+          );
+        }
+        default:
+          return null;
+      }
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function extractVariables(element, rule) {
+    const variables = {};
+
+    // Built-in placeholders
+    variables.src =
+      element.currentSrc || element.src || element.getAttribute?.('src') || '';
+    variables.href =
+      element.closest?.('a')?.href ||
+      element.href ||
+      element.getAttribute?.('href') ||
+      '';
+
+    // CSP-safe extraction rules
+    const extract = rule && rule.extract;
+    if (Array.isArray(extract)) {
+      for (const ex of extract) {
+        if (!ex || !ex.var || !ex.regex) continue;
+        const sources =
+          Array.isArray(ex.sources) && ex.sources.length
+            ? ex.sources
+            : [{ type: 'src' }, { type: 'href' }];
+        let re;
+        try {
+          re = new RegExp(ex.regex, ex.flags || undefined);
+        } catch (_) {
+          continue;
+        }
+        for (const source of sources) {
+          const value = getSourceValue(element, source);
+          if (!value) continue;
+          const m = String(value).match(re);
+          if (m) {
+            variables[ex.var] = m[1] ?? m[0];
+            break;
+          }
+        }
+      }
+    }
+
+    // Back-compat: if no extractor provided and this looks like YouTube, try to extract videoId
+    if (!variables.videoId && typeof rule?.urlTemplate === 'string') {
+      const t = rule.urlTemplate;
+      const looksYouTube =
+        t.includes('i.ytimg.com') &&
+        (t.includes('{videoId}') || t.includes('{videoid}'));
+      if (looksYouTube) {
+        const src = variables.src || '';
+        const href = variables.href || '';
+        const m =
+          src.match(/\/vi(?:_webp)?\/([^\/]+)/) ||
+          href.match(/[?&]v=([^&]+)/) ||
+          href.match(/\/shorts\/([^?\/]+)/);
+        if (m) variables.videoId = m[1];
+      }
+    }
+
+    return variables;
+  }
+
+  function applyTemplate(template, variables) {
+    if (!template) return null;
+    const url = String(template).replace(/\{([^}]+)\}/g, (m, key) => {
+      if (Object.prototype.hasOwnProperty.call(variables, key)) {
+        return variables[key];
+      }
+      return m;
+    });
+    return url;
+  }
+
   function checkCustomRules(element) {
     if (!customRules || customRules.length === 0) {
       return null;
@@ -223,51 +332,27 @@
 
         console.log('Element matches custom rule:', rule.name, element);
 
-        // Execute custom JavaScript if provided
-        let variables = {};
         if (rule.customJS) {
-          try {
-            // Create a function from the custom JS code
-            const extractFunc = new Function('element', rule.customJS);
-            const result = extractFunc(element);
-
-            // If result is a string, treat it as the final URL
-            if (typeof result === 'string') {
-              console.log('Custom rule returned URL:', result);
-              return result;
-            }
-
-            // If result is an object, use it as variables for template
-            if (result && typeof result === 'object') {
-              variables = result;
-            }
-          } catch (jsError) {
-            console.error(
-              'Error executing custom JS for rule:',
-              rule.name,
-              jsError
-            );
-            continue;
-          }
+          console.warn(
+            'Custom JS is not supported in MV3 (CSP blocks unsafe-eval). Use rule.extract instead.',
+            rule.name
+          );
         }
 
-        // Apply URL template if provided
+        const variables = extractVariables(element, rule);
+
         if (rule.urlTemplate) {
-          let url = rule.urlTemplate;
+          const url = applyTemplate(rule.urlTemplate, variables);
 
-          // Replace placeholders in template with variables
-          for (const [key, value] of Object.entries(variables)) {
-            url = url.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
-          }
-
-          // Check if all placeholders were replaced
-          if (url.includes('{')) {
+          if (url && url.includes('{')) {
             console.warn('Not all placeholders replaced in URL template:', url);
             continue;
           }
 
-          console.log('Custom rule generated URL:', url);
-          return url;
+          if (url) {
+            console.log('Custom rule generated URL:', url);
+            return url;
+          }
         }
       } catch (error) {
         console.error('Error checking custom rule:', rule.name, error);
@@ -763,8 +848,8 @@
     try {
       const rule = msg.rule || {};
       const selector = rule.selector;
-      const customJS = rule.customJS || '';
       const urlTemplate = rule.urlTemplate || '';
+      const extract = rule.extract;
       const matches = selector
         ? Array.from(document.querySelectorAll(selector))
         : [];
@@ -790,18 +875,9 @@
         let unresolvedPlaceholders = false;
         let error = null;
         try {
-          if (customJS) {
-            const fn = new Function('element', customJS);
-            const res = fn(el);
-            if (typeof res === 'string') url = res;
-            else if (res && typeof res === 'object') variables = res;
-          }
+          variables = extractVariables(el, { urlTemplate, extract });
           if (!url && urlTemplate) {
-            url = urlTemplate.replace(/\{([^}]+)\}/g, (m, k) => {
-              return Object.prototype.hasOwnProperty.call(variables, k)
-                ? variables[k]
-                : m;
-            });
+            url = applyTemplate(urlTemplate, variables);
             unresolvedPlaceholders = /\{[^}]+\}/.test(url);
           }
         } catch (e) {
