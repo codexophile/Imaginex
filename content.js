@@ -245,6 +245,15 @@
             target.getAttribute?.(source.name) || target[source.name] || null
           );
         }
+        case 'cssQueryAttr': {
+          // Query within the matched element, then read attribute/property.
+          if (!source.selector || !source.name) return null;
+          const target = element.querySelector?.(source.selector);
+          if (!target) return null;
+          return (
+            target.getAttribute?.(source.name) || target[source.name] || null
+          );
+        }
         case 'xpath': {
           if (!source.expr) return null;
           if (typeof document === 'undefined' || !document.evaluate)

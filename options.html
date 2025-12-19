@@ -377,7 +377,8 @@
           <div class="help-text">
             Manifest V3 blocks running user-provided JavaScript (<code>unsafe-eval</code>), so rules use CSP-safe
             extractors.
-            Provide either a JSON array of extract steps, or XPath shorthand (one per line).
+            Provide either a JSON array of extract steps, or shorthand (one per line): XPath,
+            <code>qs("selector@attr")</code>, or <code>closest("closestSelector", "selector", "attr")</code>.
             Each step reads from one or more sources and applies a regex.
             The first capture group becomes the variable value.
           </div>

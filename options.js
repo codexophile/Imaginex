@@ -356,8 +356,9 @@ function parseExtractInput(text) {
   // Shorthand mode (human-friendly): one rule per line.
   // Supports:
   //   url = xpath('...') | srcsetBest
-  //   xpath('...')
-  //   xpath('...') || xpath('...') | srcsetBest
+  //   url = qs('selector@attr') | srcsetBest
+  //   url = closest('closestSelector', 'selector', 'attr') | srcsetBest
+  //   xpath('...') || qs('...') || closest('...') | srcsetBest
   const steps = [];
   const lines = raw.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
@@ -395,31 +396,80 @@ function parseExtractInput(text) {
     }
 
     // Support fallbacks via ||
-    const exprs = exprPart
+    const exprsRaw = exprPart
       .split('||')
       .map(s => s.trim())
-      .filter(Boolean)
-      .map(s => {
-        // Allow xpath('...') wrapper, otherwise treat as raw XPath.
-        if (/^xpath\s*\(/i.test(s)) {
-          const inner = s.replace(/^xpath\s*\(/i, '').replace(/\)\s*$/, '');
-          const q = inner.trim();
-          if (
-            (q.startsWith('"') && q.endsWith('"')) ||
-            (q.startsWith("'") && q.endsWith("'"))
-          ) {
-            return q.slice(1, -1);
-          }
-          return q;
-        }
+      .filter(Boolean);
+    const exprs = [];
+    for (const s of exprsRaw) {
+      // xpath('...') → source:{ type:'xpath', expr: '...' }
+      if (/^xpath\s*\(/i.test(s)) {
+        const inner = s.replace(/^xpath\s*\(/i, '').replace(/\)\s*$/, '');
+        let expr = inner.trim();
         if (
-          (s.startsWith('"') && s.endsWith('"')) ||
-          (s.startsWith("'") && s.endsWith("'"))
+          (expr.startsWith('"') && expr.endsWith('"')) ||
+          (expr.startsWith("'") && expr.endsWith("'"))
         ) {
-          return s.slice(1, -1);
+          expr = expr.slice(1, -1);
         }
-        return s;
-      });
+        exprs.push({ kind: 'xpath', expr });
+        continue;
+      }
+
+      // qs('selector@attr') → source:{ type:'cssQueryAttr', selector, name }
+      if (/^qs\s*\(/i.test(s)) {
+        const inner = s.replace(/^qs\s*\(/i, '').replace(/\)\s*$/, '');
+        let selAttr = inner.trim();
+        if (
+          (selAttr.startsWith('"') && selAttr.endsWith('"')) ||
+          (selAttr.startsWith("'") && selAttr.endsWith("'"))
+        ) {
+          selAttr = selAttr.slice(1, -1);
+        }
+        const atIdx = selAttr.lastIndexOf('@');
+        if (atIdx === -1)
+          throw new Error(`qs(...) requires "selector@attr" on line ${i + 1}.`);
+        const selector = selAttr.slice(0, atIdx).trim();
+        const name = selAttr.slice(atIdx + 1).trim();
+        if (!selector || !name)
+          throw new Error(`Invalid qs(...) selector@attr on line ${i + 1}.`);
+        exprs.push({ kind: 'cssQueryAttr', selector, name });
+        continue;
+      }
+
+      // closest('closestSelector', 'selector', 'attr') → source:{ type:'closestQueryAttr', closest, selector, name }
+      if (/^closest\s*\(/i.test(s)) {
+        const m = s.match(
+          /^closest\s*\(\s*(['"])(.*?)\1\s*,\s*(['"])(.*?)\3\s*,\s*(['"])(.*?)\5\s*\)\s*$/i
+        );
+        if (!m)
+          throw new Error(
+            `closest(...) requires three quoted args on line ${i + 1}.`
+          );
+        const closestSel = m[2].trim();
+        const selector = m[4].trim();
+        const name = m[6].trim();
+        if (!closestSel || !selector || !name)
+          throw new Error(`Invalid closest(...) args on line ${i + 1}.`);
+        exprs.push({
+          kind: 'closestQueryAttr',
+          closest: closestSel,
+          selector,
+          name,
+        });
+        continue;
+      }
+
+      // Raw XPath string without wrapper
+      let rawXpath = s;
+      if (
+        (rawXpath.startsWith('"') && rawXpath.endsWith('"')) ||
+        (rawXpath.startsWith("'") && rawXpath.endsWith("'"))
+      ) {
+        rawXpath = rawXpath.slice(1, -1);
+      }
+      exprs.push({ kind: 'xpath', expr: rawXpath });
+    }
 
     if (exprs.length === 0) {
       throw new Error(`Missing XPath on line ${i + 1}.`);
@@ -429,7 +479,19 @@ function parseExtractInput(text) {
       var: varName,
       regex: '(.+)',
       mode,
-      sources: exprs.map(expr => ({ type: 'xpath', expr })),
+      sources: exprs.map(x => {
+        if (x.kind === 'xpath') return { type: 'xpath', expr: x.expr };
+        if (x.kind === 'cssQueryAttr')
+          return { type: 'cssQueryAttr', selector: x.selector, name: x.name };
+        if (x.kind === 'closestQueryAttr')
+          return {
+            type: 'closestQueryAttr',
+            closest: x.closest,
+            selector: x.selector,
+            name: x.name,
+          };
+        return { type: 'xpath', expr: String(x) };
+      }),
     });
   }
 

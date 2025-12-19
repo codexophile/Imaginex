@@ -63,6 +63,18 @@ url = xpath("ancestor::div[contains(@class,'relative')][1]//picture/source[@type
 url = xpath("ancestor::div[contains(@class,'relative')][1]//picture/source[@type='image/webp']/@srcset") || xpath("ancestor::div[contains(@class,'relative')][1]//picture/img/@src")
 ```
 
+### CSS Shorthand (Optional)
+
+If you prefer CSS selectors:
+
+```text
+# within the matched element, querySelector then read attribute
+url = qs("picture source[type='image/webp']@data-srcset") | srcsetBest
+
+# find closest ancestor then query within it, read attribute
+url = closest("div.relative.group", "picture img", "src")
+```
+
 Built-in variables are always available:
 
 - `{src}`: element `src`/`currentSrc`
