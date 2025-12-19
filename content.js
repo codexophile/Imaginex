@@ -452,7 +452,6 @@
     const bestImageSource = customUrl || getBestImageSource(img);
     const bestDimensions = customUrl ? null : getBestImageDimensions(img);
 
-    overlayImg.src = bestImageSource;
     overlayImg.alt = img.alt || '';
 
     console.log(
@@ -470,58 +469,62 @@
     );
 
     // Calculate maximum dimensions considering viewport and margins
-    // Calculate maximum available space (leaving margin for positioning)
     const margin = 30; // Total margin for sizing (15px on each side)
     const maxViewportWidth = window.innerWidth - margin;
     const maxViewportHeight = window.innerHeight - margin;
 
-    // Use the best available image dimensions instead of img.naturalWidth/Height
-    // For custom URLs, we don't know dimensions in advance, so use reasonable defaults
-    const bestWidth = bestDimensions
-      ? bestDimensions.width
-      : img.naturalWidth || 1920;
-    const bestHeight = bestDimensions
-      ? bestDimensions.height
-      : img.naturalHeight || 1080;
+    const fallbackWidth = bestDimensions ? bestDimensions.width : 1920;
+    const fallbackHeight = bestDimensions ? bestDimensions.height : 1080;
 
-    // Determine optimal size while preserving aspect ratio
-    let displayWidth = Math.min(bestWidth, maxViewportWidth);
-    let displayHeight = Math.min(bestHeight, maxViewportHeight);
+    function applySize(naturalWidth, naturalHeight) {
+      const bestWidth = naturalWidth || fallbackWidth;
+      const bestHeight = naturalHeight || fallbackHeight;
 
-    // If image is too large, scale it down proportionally
-    const aspectRatio = bestWidth / bestHeight;
+      let displayWidth = Math.min(bestWidth, maxViewportWidth);
+      let displayHeight = Math.min(bestHeight, maxViewportHeight);
 
-    if (displayWidth / displayHeight > aspectRatio) {
-      // Width is the limiting factor
-      displayWidth = displayHeight * aspectRatio;
-    } else {
-      // Height is the limiting factor
-      displayHeight = displayWidth / aspectRatio;
+      const aspectRatio = bestWidth / bestHeight;
+      if (displayWidth / displayHeight > aspectRatio) {
+        displayWidth = displayHeight * aspectRatio;
+      } else {
+        displayHeight = displayWidth / aspectRatio;
+      }
+
+      displayWidth = Math.min(Math.max(displayWidth, 200), bestWidth);
+      displayHeight = Math.min(Math.max(displayHeight, 150), bestHeight);
+
+      hoverOverlay.style.width = displayWidth + 'px';
+      hoverOverlay.style.height = displayHeight + 'px';
+      overlayImg.style.width = displayWidth + 'px';
+      overlayImg.style.height = displayHeight + 'px';
     }
 
-    // Ensure minimum readable size but not larger than natural size
-    displayWidth = Math.min(Math.max(displayWidth, 200), bestWidth);
-    displayHeight = Math.min(Math.max(displayHeight, 150), bestHeight);
-
-    // Set both the overlay container and image dimensions to prevent overflow cropping
-    hoverOverlay.style.width = displayWidth + 'px';
-    hoverOverlay.style.height = displayHeight + 'px';
-
-    overlayImg.style.width = displayWidth + 'px';
-    overlayImg.style.height = displayHeight + 'px';
-
+    // Set a reasonable size immediately, then refine after load
+    applySize(bestDimensions?.width || 0, bestDimensions?.height || 0);
     hoverOverlay.style.display = 'block';
 
-    // Wait for image to load and get dimensions, then position
+    // Handlers must be set before src assignment (cached images can load very fast)
     overlayImg.onload = () => {
-      // Force a reflow to ensure dimensions are calculated correctly
+      applySize(overlayImg.naturalWidth, overlayImg.naturalHeight);
       hoverOverlay.offsetHeight;
       positionOverlay(hoverOverlay, mouseX, mouseY);
     };
 
-    // If image is already loaded, position immediately
-    if (overlayImg.complete) {
-      // Force a reflow to ensure dimensions are calculated correctly
+    overlayImg.onerror = () => {
+      console.warn('Failed to load enlarged image:', bestImageSource);
+      if (customUrl) {
+        const fallback = getBestImageSource(img);
+        console.warn('Falling back to original image source:', fallback);
+        overlayImg.src = fallback;
+      }
+    };
+
+    // Assign src last
+    overlayImg.src = bestImageSource;
+
+    // If image is already loaded, size/position immediately
+    if (overlayImg.complete && overlayImg.naturalWidth) {
+      applySize(overlayImg.naturalWidth, overlayImg.naturalHeight);
       hoverOverlay.offsetHeight;
       positionOverlay(hoverOverlay, mouseX, mouseY);
     }
