@@ -15,12 +15,23 @@ const SETTINGS_DEFAULTS = Object.freeze({
       enabled: true,
       selector: 'a#thumbnail img[src*="i.ytimg.com"]',
       urlTemplate: 'https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp',
-      customJS: `
-// Extract video ID from thumbnail URL or parent link
-const match = element.src.match(/\\/vi\\/([^\\/]+)\\//) || 
-              element.closest('a')?.href?.match(/[?&]v=([^&]+)/);
-return match ? { videoId: match[1] } : null;
-      `.trim(),
+      extract: [
+        {
+          var: 'videoId',
+          regex: '\\/vi(?:_webp)?\\/([^\\/]+)',
+          sources: [{ type: 'src' }],
+        },
+        {
+          var: 'videoId',
+          regex: '[?&]v=([^&]+)',
+          sources: [{ type: 'href' }],
+        },
+        {
+          var: 'videoId',
+          regex: '\\/(?:shorts|embed)\\/([^?\\/]+)',
+          sources: [{ type: 'href' }],
+        },
+      ],
     },
   ],
 });

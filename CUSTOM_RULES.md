@@ -22,18 +22,31 @@ Defines which elements the rule should match. Examples:
 
 ### 2. **URL Template** (Optional)
 
-A template for generating the high-quality image URL. Use placeholders in curly braces `{}` that will be replaced with values from your custom JavaScript. Examples:
+A template for generating the high-quality image URL. Use placeholders in curly braces `{}` that will be replaced with extracted variables. Examples:
 
 - `https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp`
 - `https://example.com/images/{productId}/large.jpg`
 
-### 3. **Custom JavaScript** (Optional)
+### 3. **Extract Rules (JSON)** (Optional)
 
-JavaScript code to extract variables from the matched element. The code should:
+Manifest V3 blocks running user-provided JavaScript (CSP blocks `unsafe-eval`), so rules use CSP-safe extractors.
 
-- Have access to the matched element as `element`
-- Return an object with variables for the URL template, OR
-- Return the final URL as a string
+An extractor is a JSON array. Each step:
+
+- reads a value from one or more sources (`src`, `href`, `attr`, `closestAttr`)
+- runs a regex against it
+- stores the first capture group into a variable named by `var`
+
+Advanced:
+
+- You can set `mode` to `"srcsetBest"` to pick the highest-quality URL from a `srcset`-style string.
+- You can use a source of type `closestQueryAttr` to extract from nearby DOM structures:
+  it finds `element.closest(closest)` then `querySelector(selector)` within it, then reads an attribute/property by `name`.
+
+Built-in variables are always available:
+
+- `{src}`: element `src`/`currentSrc`
+- `{href}`: element `href` or closest link `href`
 
 ## Examples
 
@@ -51,14 +64,26 @@ a#thumbnail img[src*="i.ytimg.com"]
 https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp
 ```
 
-**Custom JavaScript:**
+**Extract Rules (JSON):**
 
-```javascript
-// Extract video ID from thumbnail URL or parent link
-const match =
-  element.src.match(/\/vi\/([^\/]+)\//) ||
-  element.closest('a')?.href?.match(/[?&]v=([^&]+)/);
-return match ? { videoId: match[1] } : null;
+```json
+[
+  {
+    "var": "videoId",
+    "regex": "\\/vi(?:_webp)?\\/([^\\/]+)",
+    "sources": [{ "type": "src" }]
+  },
+  {
+    "var": "videoId",
+    "regex": "[?&]v=([^&]+)",
+    "sources": [{ "type": "href" }]
+  },
+  {
+    "var": "videoId",
+    "regex": "\\/(?:shorts|embed)\\/([^?\\/]+)",
+    "sources": [{ "type": "href" }]
+  }
+]
 ```
 
 ### Example 2: Twitter/X Images
@@ -72,20 +97,30 @@ img[src*="twimg.com"]
 **URL Template:**
 
 ```
-{imageUrl}
+{url}
 ```
 
-**Custom JavaScript:**
+**Extract Rules (JSON):**
 
-```javascript
-// Get the original size image by modifying the URL
-let url = element.src;
-// Remove size parameters like ?format=jpg&name=small
-url = url.replace(/\?.*$/, '') + '?format=jpg&name=orig';
-return { imageUrl: url };
+This example extracts the full URL and rewrites it by matching the parts you care about.
+
+```json
+[
+  {
+    "var": "url",
+    "regex": "^(https?:\\/\\/[^?#]+)(?:\\?.*)?$",
+    "sources": [{ "type": "src" }]
+  }
+]
 ```
 
-### Example 3: Return Full URL from JavaScript
+Then change the template on sites like X to the desired canonical form manually, e.g. append `?format=jpg&name=orig` in the template:
+
+```
+{url}?format=jpg&name=orig
+```
+
+### Example 3: Return Full URL (No Template Logic)
 
 **Selector:**
 
@@ -93,15 +128,30 @@ return { imageUrl: url };
 div.product-thumb
 ```
 
-**Custom JavaScript:**
+To return a full URL without composing multiple placeholders, set the URL template to `{url}` and extract a `url` variable.
 
-```javascript
-// Extract product ID from data attribute and construct URL
-const productId = element.dataset.productId;
-if (!productId) return null;
+**URL Template:**
 
-// Return the full URL directly (no template needed)
-return `https://cdn.example.com/products/${productId}/highres.jpg`;
+```
+{url}
+```
+
+**Extract Rules (JSON):**
+
+```json
+[
+  {
+    "var": "productId",
+    "regex": "^(.+)$",
+    "sources": [{ "type": "attr", "name": "data-product-id" }]
+  }
+]
+```
+
+Then compose the final URL with the template:
+
+```
+https://cdn.example.com/products/{productId}/highres.jpg
 ```
 
 ### Example 4: Instagram Posts
@@ -118,16 +168,7 @@ article img[src*="cdninstagram.com"]
 {highResUrl}
 ```
 
-**Custom JavaScript:**
-
-```javascript
-// Instagram images have resolution indicators in URL
-// Replace small/medium with large
-let url = element.src;
-url = url.replace(/\/s\d+x\d+\//, '/');
-url = url.replace(/\/[a-z]\d+x\d+\//, '/');
-return { highResUrl: url };
-```
+Instagram URL rewriting is usually site-specific; prefer extracting stable identifiers from attributes and composing the CDN URL via template.
 
 ## Tips and Best Practices
 
@@ -135,19 +176,19 @@ return { highResUrl: url };
 
 2. **Specific is Better**: Make your selectors as specific as possible to avoid unwanted matches.
 
-3. **Return null on Failure**: If your JavaScript can't extract the needed data, return `null` to prevent errors.
+3. **Return null on Failure**: If extraction can't find the needed variables, the URL template will keep `{placeholders}` and the rule will be ignored.
 
 4. **Check for Elements**: Use optional chaining (`?.`) when accessing properties that might not exist.
 
-5. **URL Validation**: The extension doesn't validate URLs. Make sure your custom JavaScript generates valid URLs.
+5. **URL Validation**: The extension doesn't validate URLs. Make sure your URL template and extracted variables produce valid URLs.
 
-6. **Performance**: Avoid complex JavaScript operations. The code runs on every matching element.
+6. **Performance**: Keep regexes simple. Extraction can run often.
 
 7. **Enable/Disable Rules**: Use the toggle in the options page to temporarily disable rules without deleting them.
 
 ## Common Placeholders
 
-When using URL templates with custom JavaScript, common placeholder patterns include:
+When using URL templates, common placeholder patterns include:
 
 - `{videoId}` - Video identifiers
 - `{productId}` - Product identifiers
@@ -166,11 +207,8 @@ Check the browser console for log messages when hovering over elements:
 - "Custom rule returned URL: [URL]"
 - "Custom rule generated URL: [URL]"
 
-Look for error messages if your custom JavaScript has issues:
-
-- "Error executing custom JS for rule: [Rule Name]"
 - "Not all placeholders replaced in URL template: [URL]"
 
 ## Security Note
 
-Custom JavaScript runs in the content script context with the same permissions as the extension. Only add custom rules from trusted sources or that you've written yourself.
+Because MV3 blocks executing custom JavaScript, extractors are declarative and CSP-safe. You should still only add rules you trust, since overly broad selectors can match unexpected elements.

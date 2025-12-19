@@ -365,19 +365,21 @@
           <label for="ruleUrlTemplate">URL Template</label>
           <input type="text" id="ruleUrlTemplate" placeholder="e.g., https://example.com/{id}/image.jpg" />
           <div class="help-text">
-            URL template with placeholders like {videoId}, {id}, etc.
-            Leave empty if using custom JavaScript below.
+            URL template with placeholders like {videoId}, {id}, {src}, {href}.
+            To return a full URL, set this to <code>{url}</code> and extract a <code>url</code> variable.
           </div>
         </div>
 
         <div class="form-group">
-          <label for="ruleCustomJS">Custom JavaScript (Optional)</label>
-          <textarea id="ruleCustomJS"
-            placeholder="// Extract data from element&#10;// Return object with variables for URL template&#10;// or return full URL as string&#10;&#10;const videoId = element.src.match(/\/vi\/([^\/]+)\//)?.[1];&#10;return videoId ? { videoId } : null;"></textarea>
+          <label for="ruleExtract">Extract Rules (JSON) (Optional)</label>
+          <textarea id="ruleExtract" spellcheck="false"
+            placeholder='[\n  {\n    "var": "videoId",\n    "regex": "\\/vi(?:_webp)?\\/([^\\/]+)",\n    "sources": [{"type":"src"},{"type":"href"}]\n  }\n]'></textarea>
           <div class="help-text">
-            JavaScript to extract variables from the element.
-            Return an object with variables for the URL template, or return the full URL as a string.
-            The matched element is available as <code>element</code>.
+            Manifest V3 blocks running user-provided JavaScript (<code>unsafe-eval</code>), so rules use CSP-safe
+            extractors.
+            Provide a JSON array of extract steps. Each step reads from one or more sources (e.g., <code>src</code>,
+            <code>href</code>, <code>attr</code>) and applies a regex.
+            The first capture group becomes the variable value.
           </div>
         </div>
 

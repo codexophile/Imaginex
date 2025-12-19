@@ -77,7 +77,9 @@ Each custom rule consists of:
   enabled: true,
   selector: 'CSS selector',
   urlTemplate: 'https://example.com/{placeholder}',
-  customJS: 'JavaScript code to extract data'
+  extract: [
+    { var: 'placeholder', regex: '...', sources: [{ type: 'src' }] }
+  ]
 }
 ```
 
@@ -85,12 +87,9 @@ Each custom rule consists of:
 
 1. User hovers over an element
 2. Extension checks if element matches any enabled custom rule's CSS selector
-3. If matched, executes the custom JavaScript code
-4. JavaScript returns either:
-   - An object with variables for the URL template
-   - A complete URL string
-5. If URL template exists, placeholders are replaced with extracted variables
-6. Final URL is used to display the high-quality image
+3. If matched, runs CSP-safe extractor steps (`extract`) to produce variables
+4. Placeholders in the URL template are replaced with extracted variables
+5. Final URL is used to display the high-quality image
 
 ### Example: YouTube Thumbnails
 
@@ -99,16 +98,15 @@ Each custom rule consists of:
 {
   selector: 'a#thumbnail img[src*="i.ytimg.com"]',
   urlTemplate: 'https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp',
-  customJS: `
-    const match = element.src.match(/\\/vi\\/([^\\/]+)\\//);
-    return match ? { videoId: match[1] } : null;
-  `
+  extract: [
+    { var: 'videoId', regex: '\\/vi(?:_webp)?\\/([^\\/]+)', sources: [{ type: 'src' }] }
+  ]
 }
 
 // Execution
 // 1. User hovers over YouTube thumbnail
 // 2. Selector matches the thumbnail image
-// 3. JavaScript extracts video ID: "dQw4w9WgXcQ"
+// 3. Extractor extracts video ID: "dQw4w9WgXcQ"
 // 4. Template generates: https://i.ytimg.com/vi_webp/dQw4w9WgXcQ/maxresdefault.webp
 // 5. Extension displays 1920x1080 thumbnail instead of default 320x180
 ```
@@ -119,7 +117,7 @@ Each custom rule consists of:
 
 - Works with any HTML element (img, div, a, etc.)
 - CSS selectors provide powerful element matching
-- Custom JavaScript allows complex data extraction
+- Extract rules provide CSP-safe data extraction
 - URL templates make common patterns easy to define
 
 ### User Experience

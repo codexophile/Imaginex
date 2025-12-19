@@ -57,7 +57,7 @@ async function init() {
   els.ruleName = $('ruleName');
   els.ruleSelector = $('ruleSelector');
   els.ruleUrlTemplate = $('ruleUrlTemplate');
-  els.ruleCustomJS = $('ruleCustomJS');
+  els.ruleExtract = $('ruleExtract');
   els.saveRuleBtn = $('saveRuleBtn');
   els.cancelRuleBtn = $('cancelRuleBtn');
   els.testRuleBtn = $('testRuleBtn');
@@ -258,8 +258,8 @@ function renderCustomRules(rules) {
             : ''
         }
         ${
-          rule.customJS
-            ? `<div><strong>Custom JS:</strong> ${rule.customJS.length} characters</div>`
+          Array.isArray(rule.extract) && rule.extract.length
+            ? `<div><strong>Extract:</strong> ${rule.extract.length} step(s)</div>`
             : ''
         }
       </div>
@@ -292,7 +292,7 @@ function handleAddRule() {
   els.ruleName.value = '';
   els.ruleSelector.value = '';
   els.ruleUrlTemplate.value = '';
-  els.ruleCustomJS.value = '';
+  els.ruleExtract.value = '';
   els.ruleForm.style.display = 'block';
   els.ruleName.focus();
 }
@@ -308,24 +308,67 @@ function handleEditRule(e) {
   els.ruleName.value = rule.name;
   els.ruleSelector.value = rule.selector;
   els.ruleUrlTemplate.value = rule.urlTemplate || '';
-  els.ruleCustomJS.value = rule.customJS || '';
+  if (Array.isArray(rule.extract) && rule.extract.length) {
+    els.ruleExtract.value = JSON.stringify(rule.extract, null, 2);
+  } else {
+    els.ruleExtract.value = '';
+  }
   els.ruleForm.style.display = 'block';
   els.ruleName.focus();
+}
+
+function parseExtractJson(text) {
+  const raw = (text || '').trim();
+  if (!raw) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (_) {
+    throw new Error('Extract Rules must be valid JSON.');
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error('Extract Rules JSON must be an array.');
+  }
+  for (const step of parsed) {
+    if (!step || typeof step !== 'object') {
+      throw new Error('Each Extract Rules step must be an object.');
+    }
+    if (typeof step.var !== 'string' || !step.var.trim()) {
+      throw new Error(
+        'Each Extract Rules step must include a non-empty "var".'
+      );
+    }
+    if (typeof step.regex !== 'string' || !step.regex.trim()) {
+      throw new Error(
+        'Each Extract Rules step must include a non-empty "regex".'
+      );
+    }
+    if (step.sources != null && !Array.isArray(step.sources)) {
+      throw new Error('If provided, "sources" must be an array.');
+    }
+  }
+  return parsed;
 }
 
 async function handleSaveRule() {
   const name = els.ruleName.value.trim();
   const selector = els.ruleSelector.value.trim();
   const urlTemplate = els.ruleUrlTemplate.value.trim();
-  const customJS = els.ruleCustomJS.value.trim();
+  let extract = null;
+  try {
+    extract = parseExtractJson(els.ruleExtract.value);
+  } catch (e) {
+    alert(e.message || String(e));
+    return;
+  }
 
   if (!name || !selector) {
     alert('Rule name and CSS selector are required.');
     return;
   }
 
-  if (!urlTemplate && !customJS) {
-    alert('Either URL template or custom JavaScript is required.');
+  if (!urlTemplate && (!extract || extract.length === 0)) {
+    alert('Either URL template or Extract Rules (JSON) is required.');
     return;
   }
 
@@ -340,8 +383,9 @@ async function handleSaveRule() {
         name,
         selector,
         urlTemplate,
-        customJS,
+        extract,
       };
+      delete rules[index].customJS;
     }
   } else {
     // Add new rule
@@ -351,7 +395,7 @@ async function handleSaveRule() {
       enabled: true,
       selector,
       urlTemplate,
-      customJS,
+      extract,
     };
     rules.push(newRule);
   }
@@ -376,7 +420,13 @@ async function handleTestRule() {
   const name = els.ruleName.value.trim() || 'Untitled Rule';
   const selector = els.ruleSelector.value.trim();
   const urlTemplate = els.ruleUrlTemplate.value.trim();
-  const customJS = els.ruleCustomJS.value.trim();
+  let extract = null;
+  try {
+    extract = parseExtractJson(els.ruleExtract.value);
+  } catch (e) {
+    alert(e.message || String(e));
+    return;
+  }
 
   if (!selector) {
     alert('CSS selector is required to test the rule.');
@@ -399,7 +449,7 @@ async function handleTestRule() {
 
     const payload = {
       type: 'imagus:testRule',
-      rule: { name, selector, urlTemplate, customJS },
+      rule: { name, selector, urlTemplate, extract },
     };
     const response = await new Promise((resolve, reject) => {
       chrome.tabs.sendMessage(tab.id, payload, res => {

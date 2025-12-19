@@ -233,12 +233,66 @@
             closest.getAttribute?.(source.name) || closest[source.name] || null
           );
         }
+        case 'closestQueryAttr': {
+          // Find closest ancestor, then querySelector within it, then read attribute/property.
+          // Useful for extracting from sibling structures like: <a ...></a> next to <picture>...</picture>
+          if (!source.closest || !source.selector || !source.name) return null;
+          const root = element.closest?.(source.closest);
+          if (!root) return null;
+          const target = root.querySelector?.(source.selector);
+          if (!target) return null;
+          return (
+            target.getAttribute?.(source.name) || target[source.name] || null
+          );
+        }
         default:
           return null;
       }
     } catch (_) {
       return null;
     }
+  }
+
+  function pickBestFromSrcsetString(srcset) {
+    const raw = (srcset || '').toString().trim();
+    if (!raw) return null;
+    // If this is already a single URL, return it.
+    if (!raw.includes(',')) {
+      const first = raw.split(/\s+/)[0];
+      return first || null;
+    }
+
+    const candidates = [];
+    for (const part of raw.split(',')) {
+      const trimmed = part.trim();
+      if (!trimmed) continue;
+      const pieces = trimmed.split(/\s+/);
+      const url = pieces[0];
+      const descriptor = pieces[1] || '';
+
+      if (!url) continue;
+      if (descriptor.endsWith('w')) {
+        const width = parseInt(descriptor.slice(0, -1), 10);
+        candidates.push({ url, width: Number.isFinite(width) ? width : 0 });
+      } else if (descriptor.endsWith('x')) {
+        const density = parseFloat(descriptor.slice(0, -1));
+        candidates.push({
+          url,
+          density: Number.isFinite(density) ? density : 1,
+        });
+      } else {
+        candidates.push({ url, density: 1 });
+      }
+    }
+
+    if (candidates.length === 0) return null;
+    const hasWidth = candidates.some(c => 'width' in c);
+    if (hasWidth) {
+      candidates.sort((a, b) => (b.width || 0) - (a.width || 0));
+      return candidates[0].url;
+    }
+    candidates.sort((a, b) => (b.density || 1) - (a.density || 1));
+    return candidates[0].url;
   }
 
   function extractVariables(element, rule) {
@@ -273,7 +327,11 @@
           if (!value) continue;
           const m = String(value).match(re);
           if (m) {
-            variables[ex.var] = m[1] ?? m[0];
+            let v = m[1] ?? m[0];
+            if (ex.mode === 'srcsetBest') {
+              v = pickBestFromSrcsetString(v) ?? v;
+            }
+            variables[ex.var] = v;
             break;
           }
         }

@@ -138,21 +138,22 @@ Each rule consists of:
 
 - **CSS Selector**: Matches specific elements on the page
 - **URL Template**: Template for generating the high-quality image URL with placeholders
-- **Custom JavaScript**: Extracts data from the matched element
+- **Extract Rules (JSON)**: CSP-safe extractor steps (regex/attribute based) that produce variables for the template
 
 **Example**: YouTube Video Thumbnails
 
-```javascript
-// Selector
+```text
+Selector:
 a#thumbnail img[src*="i.ytimg.com"]
 
-// URL Template
+URL Template:
 https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp
 
-// Custom JavaScript
-const match = element.src.match(/\/vi\/([^\/]+)\//) ||
-              element.closest('a')?.href?.match(/[?&]v=([^&]+)/);
-return match ? { videoId: match[1] } : null;
+Extract Rules (JSON):
+[
+    {"var":"videoId","regex":"\\/vi(?:_webp)?\\/([^\\/]+)","sources":[{"type":"src"}]},
+    {"var":"videoId","regex":"[?&]v=([^&]+)","sources":[{"type":"href"}]}
+]
 ```
 
 See [CUSTOM_RULES.md](CUSTOM_RULES.md) for detailed documentation and more examples.
@@ -161,7 +162,7 @@ Implementation notes:
 
 - All settings are stored locally in `chrome.storage.local` under a single key (`__settings_v1`).
 - The module `settings.js` provides a small API: `loadSettings()`, `updateSettings(patch)`, `getSetting(key)`, and `subscribe(cb)`.
-- `content.js` dynamically imports `settings.js` and updates the runtime hover delay without needing a full page reload.
+- `content.js` reads settings from `chrome.storage.local` and applies updates via `chrome.storage.onChanged`.
 - A future cloud sync layer (e.g., Firestore) can wrap or extend `settings.js` without changing callers.
 
 ## Manual Cloud Sync

@@ -29,7 +29,7 @@ function formatResults(res) {
     const unresolved = r.unresolvedPlaceholders
       ? ' [unresolved placeholders]'
       : '';
-    const err = r.error ? ` [js error: ${r.error}]` : '';
+    const err = r.error ? ` [error: ${r.error}]` : '';
     lines.push(`\n#${i + 1}: ${url}${unresolved}${err}`);
     if (r.elementSummary) lines.push(`  ${r.elementSummary}`);
   }
@@ -81,7 +81,7 @@ async function init() {
           name: rule.name,
           selector: rule.selector,
           urlTemplate: rule.urlTemplate,
-          customJS: rule.customJS,
+          extract: rule.extract,
         },
       });
 

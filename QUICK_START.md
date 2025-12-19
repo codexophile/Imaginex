@@ -39,25 +39,42 @@ A pattern for the high-quality image URL with placeholders:
 - `https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp`
 - `https://cdn.example.com/{productId}/large.jpg`
 
-Leave empty if you're returning the full URL from JavaScript.
+To return a full URL, set the URL template to `{url}` and extract a `url` variable.
 
-#### Custom JavaScript (required if no URL template)
+#### Extract Rules (JSON) (optional)
 
-Code to extract data from the matched element. The element is available as `element`.
+Manifest V3 blocks running user-provided JavaScript (`unsafe-eval`), so extraction uses CSP-safe regex rules.
 
-**Example 1 - Return variables for template:**
+**Example 1 - Extract `videoId` for template:**
 
-```javascript
-const videoId = element.src.match(/\/vi\/([^\/]+)\//)?.[1];
-return videoId ? { videoId } : null;
+```json
+[
+  {
+    "var": "videoId",
+    "regex": "\\/vi(?:_webp)?\\/([^\\/]+)",
+    "sources": [{ "type": "src" }, { "type": "href" }]
+  }
+]
 ```
 
-**Example 2 - Return full URL:**
+**Example 2 - Return full URL via `{url}`:**
 
-```javascript
-const productId = element.dataset.productId;
-if (!productId) return null;
-return `https://example.com/products/${productId}/hd.jpg`;
+Set URL template to:
+
+```
+{url}
+```
+
+Then extract from an attribute:
+
+```json
+[
+  {
+    "var": "url",
+    "regex": "^(.+)$",
+    "sources": [{ "type": "attr", "name": "data-hd-url" }]
+  }
+]
 ```
 
 ### Step 4: Save the Rule
@@ -76,13 +93,21 @@ The extension comes with a YouTube rule already configured:
 
 **Selector:** `a#thumbnail img[src*="i.ytimg.com"]`  
 **URL Template:** `https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp`  
-**Custom JS:**
+**Extract Rules (JSON):**
 
-```javascript
-const match =
-  element.src.match(/\/vi\/([^\/]+)\//) ||
-  element.closest('a')?.href?.match(/[?&]v=([^&]+)/);
-return match ? { videoId: match[1] } : null;
+```json
+[
+  {
+    "var": "videoId",
+    "regex": "\\/vi(?:_webp)?\\/([^\\/]+)",
+    "sources": [{ "type": "src" }]
+  },
+  {
+    "var": "videoId",
+    "regex": "[?&]v=([^&]+)",
+    "sources": [{ "type": "href" }]
+  }
+]
 ```
 
 This extracts the video ID and generates a URL for the 1920x1080 thumbnail.
