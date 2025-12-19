@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Imaginex</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 12px;
+      width: 360px;
+    }
+
+    h1 {
+      font-size: 14px;
+      margin: 0 0 10px;
+      opacity: .9;
+    }
+
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      display: block;
+      margin: 10px 0 6px;
+    }
+
+    select,
+    input,
+    button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 0, 0, .2);
+      font-family: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      background: #4b6cb7;
+      color: #fff;
+      font-weight: 700;
+      margin-top: 10px;
+    }
+
+    button.secondary {
+      background: #555;
+      margin-top: 8px;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(0, 0, 0, .06);
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      margin: 10px 0 0;
+      max-height: 220px;
+      overflow: auto;
+    }
+
+    .muted {
+      font-size: 11px;
+      opacity: .7;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Imaginex – Rule Tester</h1>
+  <div class="muted">Open this popup on the page you want to test (e.g., YouTube), then run the test.</div>
+
+  <label for="ruleSelect">Rule</label>
+  <select id="ruleSelect"></select>
+
+  <button id="testBtn">Test on This Page</button>
+  <button id="openOptionsBtn" class="secondary">Open Options</button>
+
+  <pre id="output">Ready.</pre>
+
+  <script type="module" src="popup.js"></script>
+</body>
+
+</html>

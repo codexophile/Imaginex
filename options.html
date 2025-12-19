@@ -147,6 +147,125 @@
       font-size: 12px;
       margin-left: 10px;
     }
+
+    .custom-rules-list {
+      margin: 16px 0;
+    }
+
+    .rule-item {
+      background: rgba(0, 0, 0, 0.03);
+      padding: 14px;
+      margin: 10px 0;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .rule-item {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+    }
+
+    .rule-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .rule-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .rule-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .rule-actions button {
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .rule-actions button.danger {
+      background: #d9534f;
+    }
+
+    .rule-details {
+      font-size: 12px;
+      opacity: 0.8;
+      margin: 4px 0;
+    }
+
+    .rule-details code {
+      background: rgba(0, 0, 0, 0.1);
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .rule-details code {
+        background: rgba(255, 255, 255, 0.15);
+      }
+    }
+
+    .rule-form {
+      background: rgba(75, 108, 183, 0.05);
+      padding: 16px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border: 1px solid rgba(75, 108, 183, 0.2);
+    }
+
+    .form-group {
+      margin: 12px 0;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .form-group input[type="text"],
+    .form-group textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+      font-family: inherit;
+    }
+
+    .form-group textarea {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .help-text {
+      font-size: 11px;
+      opacity: 0.65;
+      margin-top: 4px;
+    }
+
+    .toggle-enabled {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
   </style>
 </head>
 
@@ -210,6 +329,71 @@
       </div>
       <p style="margin-top:0; font-size:13px; opacity:.7;">Manually save or load your settings to/from Google Drive.
         Sign in with your Google account once. Settings are always stored locally; cloud sync is manual.</p>
+    </section>
+
+    <section>
+      <h2>Custom Rules</h2>
+      <p style="margin-top:0; font-size:13px; opacity:.8;">
+        Define custom rules to find higher-quality images for specific elements.
+        For example, find maxresdefault thumbnails for YouTube videos or high-res product images.
+      </p>
+
+      <div class="custom-rules-list" id="customRulesList">
+        <!-- Rules will be dynamically inserted here -->
+      </div>
+
+      <button id="addRuleBtn">Add New Rule</button>
+
+      <div id="ruleForm" class="rule-form" style="display: none;">
+        <h3 style="margin-top: 0; font-size: 15px;">
+          <span id="formTitle">New Rule</span>
+        </h3>
+
+        <div class="form-group">
+          <label for="ruleName">Rule Name</label>
+          <input type="text" id="ruleName" placeholder="e.g., YouTube Thumbnails" />
+          <div class="help-text">A descriptive name for this rule</div>
+        </div>
+
+        <div class="form-group">
+          <label for="ruleSelector">CSS Selector</label>
+          <input type="text" id="ruleSelector" placeholder="e.g., a#thumbnail img[src*='ytimg.com']" />
+          <div class="help-text">CSS selector to match elements (e.g., img, a, div)</div>
+        </div>
+
+        <div class="form-group">
+          <label for="ruleUrlTemplate">URL Template</label>
+          <input type="text" id="ruleUrlTemplate" placeholder="e.g., https://example.com/{id}/image.jpg" />
+          <div class="help-text">
+            URL template with placeholders like {videoId}, {id}, etc.
+            Leave empty if using custom JavaScript below.
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="ruleCustomJS">Custom JavaScript (Optional)</label>
+          <textarea id="ruleCustomJS"
+            placeholder="// Extract data from element&#10;// Return object with variables for URL template&#10;// or return full URL as string&#10;&#10;const videoId = element.src.match(/\/vi\/([^\/]+)\//)?.[1];&#10;return videoId ? { videoId } : null;"></textarea>
+          <div class="help-text">
+            JavaScript to extract variables from the element.
+            Return an object with variables for the URL template, or return the full URL as a string.
+            The matched element is available as <code>element</code>.
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button id="testRuleBtn" class="secondary">Test on Current Tab</button>
+          <button id="saveRuleBtn">Save Rule</button>
+          <button id="cancelRuleBtn" class="secondary">Cancel</button>
+        </div>
+
+        <div id="ruleTestResults" class="rule-item" style="display:none;">
+          <div class="rule-header">
+            <div class="rule-name">Test Results</div>
+          </div>
+          <div class="rule-details" id="ruleTestDetails"></div>
+        </div>
+      </div>
     </section>
 
     <div class="footer-note">Imaginex v1.0.0 &mdash; Settings stored locally. Google Drive sync available.</div>

@@ -10,6 +10,8 @@ A Chromium Manifest V3 extension that displays larger images when hovering over 
 - 🌙 **Dark Mode Support**: Automatically adapts to system theme preferences
 - ⌨️ **Keyboard Support**: Press Escape to hide the enlarged image
 - 📱 **Responsive**: Works on any screen size
+- 🎨 **Custom Rules**: Define rules to find higher-quality images for specific elements (e.g., YouTube thumbnails)
+- ☁️ **Cloud Sync**: Manually save and load settings to/from Google Drive
 
 ## How It Works
 
@@ -42,11 +44,16 @@ imagus/
 ├── content.js            # Main functionality script
 ├── styles.css            # Overlay styling
 ├── background.js         # Background service worker
+├── settings.js           # Settings management module
+├── cloudSync.js          # Google Drive cloud sync
+├── options.html          # Options/settings page
+├── options.js            # Options page logic
 ├── icons/                # Extension icons
 │   ├── icon16.png       # 16x16 toolbar icon
 │   ├── icon48.png       # 48x48 management icon
 │   ├── icon128.png      # 128x128 store icon
 │   └── README.md        # Icon creation guide
+├── CUSTOM_RULES.md       # Custom rules documentation
 └── README.md            # This file
 ```
 
@@ -117,10 +124,38 @@ An options page (`options.html`) has been added to manage user-configurable pref
 
 Current settings:
 
-- Theme (light / dark / system) – currently affects options UI, future overlay styling
-- Hover Delay (ms) – overrides the delay before enlargement (`hoverDelay`)
-- Zoom Factor – placeholder for future manual scaling adjustments
-- Prefetch Larger Image – placeholder for future high‑res preloading
+- **Theme** (light / dark / system) – currently affects options UI, future overlay styling
+- **Hover Delay (ms)** – overrides the delay before enlargement
+- **Zoom Factor** – placeholder for future manual scaling adjustments
+- **Prefetch Larger Image** – placeholder for future high‑res preloading
+- **Custom Rules** – define custom rules to find higher-quality images for specific elements
+
+### Custom Rules
+
+Custom rules allow you to extract higher-quality images from elements that don't have proper image tags or have low-quality images. For example, you can configure the extension to fetch high-resolution YouTube thumbnails.
+
+Each rule consists of:
+
+- **CSS Selector**: Matches specific elements on the page
+- **URL Template**: Template for generating the high-quality image URL with placeholders
+- **Custom JavaScript**: Extracts data from the matched element
+
+**Example**: YouTube Video Thumbnails
+
+```javascript
+// Selector
+a#thumbnail img[src*="i.ytimg.com"]
+
+// URL Template
+https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp
+
+// Custom JavaScript
+const match = element.src.match(/\/vi\/([^\/]+)\//) ||
+              element.closest('a')?.href?.match(/[?&]v=([^&]+)/);
+return match ? { videoId: match[1] } : null;
+```
+
+See [CUSTOM_RULES.md](CUSTOM_RULES.md) for detailed documentation and more examples.
 
 Implementation notes:
 

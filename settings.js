@@ -7,6 +7,22 @@ const SETTINGS_DEFAULTS = Object.freeze({
   zoom: 1.0, // Placeholder for potential scaling of enlarged image
   enablePrefetch: true, // Future optimization: prefetch high-res images on hover intent
   hoverDelay: 300, // Delay before showing enlarged image (ms)
+  customRules: [
+    // Custom rules for finding higher-quality images
+    {
+      id: 'youtube-thumbnails',
+      name: 'YouTube Video Thumbnails',
+      enabled: true,
+      selector: 'a#thumbnail img[src*="i.ytimg.com"]',
+      urlTemplate: 'https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp',
+      customJS: `
+// Extract video ID from thumbnail URL or parent link
+const match = element.src.match(/\\/vi\\/([^\\/]+)\\//) || 
+              element.closest('a')?.href?.match(/[?&]v=([^&]+)/);
+return match ? { videoId: match[1] } : null;
+      `.trim(),
+    },
+  ],
 });
 
 const INTERNAL_KEY = '__settings_v1';

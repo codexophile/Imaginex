@@ -6,29 +6,29 @@
   let hoverTimer = null;
   let noPopupTooltip = null;
   let HOVER_DELAY = 300; // default; will be overridden by settings
-  // Load settings dynamically (isolated world can't use import, so we inject a script tag to access settings module if needed)
-  try {
-    // Attempt to access chrome.runtime.getURL to fetch settings module via dynamic import in MV3 content script.
-    const settingsUrl = chrome.runtime.getURL('settings.js');
-    import(settingsUrl)
-      .then(mod => {
-        if (mod && typeof mod.getSetting === 'function') {
-          mod.getSetting('hoverDelay').then(v => {
-            if (typeof v === 'number') HOVER_DELAY = v;
-          });
-          if (typeof mod.subscribe === 'function') {
-            mod.subscribe(s => {
-              if (typeof s.hoverDelay === 'number') HOVER_DELAY = s.hoverDelay;
-            });
-          }
-        }
-      })
-      .catch(() => {
-        /* ignore */
-      });
-  } catch (e) {
-    // Ignore if dynamic import not available
+  let customRules = []; // Custom rules for finding higher-quality images
+
+  const SETTINGS_INTERNAL_KEY = '__settings_v1';
+
+  function applySettingsFromStorage(raw) {
+    if (!raw || typeof raw !== 'object') return;
+    if (typeof raw.hoverDelay === 'number') HOVER_DELAY = raw.hoverDelay;
+    if (Array.isArray(raw.customRules)) {
+      customRules = raw.customRules.filter(r => r && r.enabled);
+    }
   }
+
+  // Load settings directly from storage (MV3 content scripts can't reliably dynamic-import extension modules)
+  chrome.storage.local.get([SETTINGS_INTERNAL_KEY], result => {
+    applySettingsFromStorage(result[SETTINGS_INTERNAL_KEY]);
+  });
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') return;
+    const change = changes[SETTINGS_INTERNAL_KEY];
+    if (!change) return;
+    applySettingsFromStorage(change.newValue);
+  });
 
   // Create the hover overlay element
   function createOverlay() {
@@ -201,6 +201,82 @@
     return widthRatio > 1.2 || heightRatio > 1.2;
   }
 
+  // Custom rule matching and image URL extraction
+  function checkCustomRules(element) {
+    if (!customRules || customRules.length === 0) {
+      return null;
+    }
+
+    for (const rule of customRules) {
+      try {
+        // Check if the element or any ancestor matches the selector
+        let matched = false;
+        try {
+          if (element.matches(rule.selector)) matched = true;
+          else if (element.closest(rule.selector)) matched = true;
+        } catch (_) {
+          // Invalid selector, skip
+          continue;
+        }
+
+        if (!matched) continue;
+
+        console.log('Element matches custom rule:', rule.name, element);
+
+        // Execute custom JavaScript if provided
+        let variables = {};
+        if (rule.customJS) {
+          try {
+            // Create a function from the custom JS code
+            const extractFunc = new Function('element', rule.customJS);
+            const result = extractFunc(element);
+
+            // If result is a string, treat it as the final URL
+            if (typeof result === 'string') {
+              console.log('Custom rule returned URL:', result);
+              return result;
+            }
+
+            // If result is an object, use it as variables for template
+            if (result && typeof result === 'object') {
+              variables = result;
+            }
+          } catch (jsError) {
+            console.error(
+              'Error executing custom JS for rule:',
+              rule.name,
+              jsError
+            );
+            continue;
+          }
+        }
+
+        // Apply URL template if provided
+        if (rule.urlTemplate) {
+          let url = rule.urlTemplate;
+
+          // Replace placeholders in template with variables
+          for (const [key, value] of Object.entries(variables)) {
+            url = url.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+          }
+
+          // Check if all placeholders were replaced
+          if (url.includes('{')) {
+            console.warn('Not all placeholders replaced in URL template:', url);
+            continue;
+          }
+
+          console.log('Custom rule generated URL:', url);
+          return url;
+        }
+      } catch (error) {
+        console.error('Error checking custom rule:', rule.name, error);
+      }
+    }
+
+    return null;
+  }
+
   // Position the overlay relative to the cursor
   function positionOverlay(overlay, mouseX, mouseY) {
     const overlayRect = overlay.getBoundingClientRect();
@@ -282,14 +358,14 @@
   }
 
   // Show the enlarged image
-  function showEnlargedImage(img, mouseX, mouseY) {
+  function showEnlargedImage(img, mouseX, mouseY, customUrl = null) {
     if (!hoverOverlay) {
       hoverOverlay = createOverlay();
     }
 
     const overlayImg = hoverOverlay.querySelector('img');
-    const bestImageSource = getBestImageSource(img);
-    const bestDimensions = getBestImageDimensions(img);
+    const bestImageSource = customUrl || getBestImageSource(img);
+    const bestDimensions = customUrl ? null : getBestImageDimensions(img);
 
     overlayImg.src = bestImageSource;
     overlayImg.alt = img.alt || '';
@@ -297,11 +373,15 @@
     console.log(
       'Using image source for enlargement:',
       bestImageSource,
+      customUrl ? '(from custom rule)' : '',
       'from element:',
       img,
-      'Best dimensions:',
-      bestDimensions.width + 'x' + bestDimensions.height,
-      bestDimensions.estimated ? '(estimated)' : '(exact)'
+      bestDimensions
+        ? 'Best dimensions: ' +
+            bestDimensions.width +
+            'x' +
+            bestDimensions.height
+        : ''
     );
 
     // Calculate maximum dimensions considering viewport and margins
@@ -311,8 +391,13 @@
     const maxViewportHeight = window.innerHeight - margin;
 
     // Use the best available image dimensions instead of img.naturalWidth/Height
-    const bestWidth = bestDimensions.width;
-    const bestHeight = bestDimensions.height;
+    // For custom URLs, we don't know dimensions in advance, so use reasonable defaults
+    const bestWidth = bestDimensions
+      ? bestDimensions.width
+      : img.naturalWidth || 1920;
+    const bestHeight = bestDimensions
+      ? bestDimensions.height
+      : img.naturalHeight || 1080;
 
     // Determine optimal size while preserving aspect ratio
     let displayWidth = Math.min(bestWidth, maxViewportWidth);
@@ -453,7 +538,14 @@
     // Set timer to show enlarged image after delay
     hoverTimer = setTimeout(() => {
       if (currentImg === img) {
-        if (isImageScaledDown(img)) {
+        // First, check if any custom rules match this element
+        const customUrl = checkCustomRules(img);
+
+        if (customUrl) {
+          // Custom rule found, show image from custom URL
+          showEnlargedImage(img, event.clientX, event.clientY, customUrl);
+        } else if (isImageScaledDown(img)) {
+          // No custom rule, but image is scaled down - show enlarged version
           showEnlargedImage(img, event.clientX, event.clientY);
         } else {
           // Show visual indicator that image won't be enlarged
@@ -488,8 +580,26 @@
     document.addEventListener(
       'mouseenter',
       function (event) {
-        if (event.target.tagName === 'IMG') {
+        const target = event.target;
+
+        // Handle IMG elements as before
+        if (target.tagName === 'IMG') {
           handleImageMouseEnter(event);
+          return;
+        }
+
+        // Check if any custom rule matches this element (for non-IMG elements)
+        if (customRules && customRules.length > 0) {
+          for (const rule of customRules) {
+            try {
+              if (target.matches(rule.selector)) {
+                handleCustomElementMouseEnter(event);
+                break;
+              }
+            } catch (e) {
+              // Invalid selector, ignore
+            }
+          }
         }
       },
       true
@@ -500,6 +610,9 @@
       function (event) {
         if (event.target.tagName === 'IMG') {
           handleImageMouseLeave(event);
+        } else if (event.target === currentImg) {
+          // Handle custom element mouse leave
+          hideEnlargedImage();
         }
       },
       true
@@ -541,6 +654,38 @@
         positionOverlay(hoverOverlay, mouseX, mouseY);
       }
     });
+  }
+
+  // Handle mouse enter on custom elements (non-IMG)
+  function handleCustomElementMouseEnter(event) {
+    const element = event.target;
+
+    // Skip if same element
+    if (element === currentImg) {
+      return;
+    }
+
+    currentImg = element;
+
+    // Clear any existing timer
+    if (hoverTimer) {
+      clearTimeout(hoverTimer);
+    }
+
+    // Set timer to show enlarged image after delay
+    hoverTimer = setTimeout(() => {
+      if (currentImg === element) {
+        // Check custom rules for this element
+        const customUrl = checkCustomRules(element);
+
+        if (customUrl) {
+          // Create a temporary img element for the overlay
+          const tempImg = document.createElement('img');
+          tempImg.src = customUrl;
+          showEnlargedImage(tempImg, event.clientX, event.clientY, customUrl);
+        }
+      }
+    }, HOVER_DELAY);
   }
 
   // Inject universal CSS fixes for blocking overlay elements
@@ -598,11 +743,85 @@
       ._1JmnMJclrTwTPpAip5U_Hm:empty {
         pointer-events: none !important;
       }
+
+      /* YouTube overlays that often intercept hover */
+      ytd-thumbnail [class*="overlay"],
+      ytd-thumbnail-overlay-time-status-renderer,
+      ytd-thumbnail-overlay-toggle-button-renderer,
+      ytd-thumbnail-overlay-now-playing-renderer {
+        pointer-events: none !important;
+      }
     `;
 
     // Insert at the beginning of head to ensure lower specificity doesn't override
     document.head.insertBefore(style, document.head.firstChild);
   }
+
+  // Message handler for rule testing from options page
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (!msg || msg.type !== 'imagus:testRule') return;
+    try {
+      const rule = msg.rule || {};
+      const selector = rule.selector;
+      const customJS = rule.customJS || '';
+      const urlTemplate = rule.urlTemplate || '';
+      const matches = selector
+        ? Array.from(document.querySelectorAll(selector))
+        : [];
+
+      function summarize(el) {
+        try {
+          const tag = el.tagName.toLowerCase();
+          const cls = (el.className || '').toString().trim();
+          const id = el.id || '';
+          const src = el.src || '';
+          const href = el.href || '';
+          return `${tag}${id ? '#' + id : ''}${
+            cls ? '.' + cls.replace(/\s+/g, '.') : ''
+          } ${src || href}`.trim();
+        } catch (_) {
+          return 'element';
+        }
+      }
+
+      const results = matches.map(el => {
+        let variables = {};
+        let url = null;
+        let unresolvedPlaceholders = false;
+        let error = null;
+        try {
+          if (customJS) {
+            const fn = new Function('element', customJS);
+            const res = fn(el);
+            if (typeof res === 'string') url = res;
+            else if (res && typeof res === 'object') variables = res;
+          }
+          if (!url && urlTemplate) {
+            url = urlTemplate.replace(/\{([^}]+)\}/g, (m, k) => {
+              return Object.prototype.hasOwnProperty.call(variables, k)
+                ? variables[k]
+                : m;
+            });
+            unresolvedPlaceholders = /\{[^}]+\}/.test(url);
+          }
+        } catch (e) {
+          error = e.message || String(e);
+        }
+        return {
+          url,
+          variables,
+          unresolvedPlaceholders,
+          error,
+          elementSummary: summarize(el),
+        };
+      });
+
+      sendResponse({ ok: true, count: matches.length, results });
+    } catch (e) {
+      sendResponse({ ok: false, error: e.message || String(e) });
+    }
+    return true; // async
+  });
 
   // Wait for DOM to be ready
   if (document.readyState === 'loading') {
