@@ -54,6 +54,15 @@ async function init() {
   applyTheme(s.theme);
   wireEvents();
   subscribe(onExternalChange);
+  // Disable cloud actions if not configured
+  try {
+    await signIn(false);
+  } catch (e) {
+    if (els.cloudSaveBtn) els.cloudSaveBtn.disabled = true;
+    if (els.cloudLoadBtn) els.cloudLoadBtn.disabled = true;
+    if (els.cloudStatus)
+      els.cloudStatus.textContent = 'Cloud sync not configured (see README).';
+  }
 }
 
 function bindValues(s) {
@@ -108,6 +117,7 @@ function wireEvents() {
   els.resetBtn.addEventListener('click', resetDefaults);
   if (els.cloudSaveBtn) {
     els.cloudSaveBtn.addEventListener('click', async () => {
+      if (els.cloudSaveBtn.disabled) return;
       els.cloudStatus.textContent = 'Saving to cloud...';
       try {
         await signIn(true);
@@ -124,6 +134,7 @@ function wireEvents() {
   }
   if (els.cloudLoadBtn) {
     els.cloudLoadBtn.addEventListener('click', async () => {
+      if (els.cloudLoadBtn.disabled) return;
       els.cloudStatus.textContent = 'Loading from cloud...';
       try {
         await signIn(true);

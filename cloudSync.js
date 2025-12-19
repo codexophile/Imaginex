@@ -1,76 +1,200 @@
 // cloudSync.js
-// Manual Firestore sync for extension settings
-// Replace firebaseConfig with your own project values
+// Google Drive sync for extension settings - no Firebase, no external dependencies
 
-const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-  projectId: 'YOUR_PROJECT_ID',
-};
+const SETTINGS_FILENAME = 'imaginex-settings.json';
+let cachedFileId = null;
 
-let firebaseApp = null;
-let firestore = null;
-let auth = null;
-let user = null;
+// Log once when module loads
+console.info('[Imaginex] Drive sync module loaded');
 
-async function ensureFirebase() {
-  if (firebaseApp) return;
+export function isCloudConfigured() {
   try {
-    const appMod = await import(
-      'https://www.gstatic.com/firebasejs/9.24.0/firebase-app.js'
+    const mf = chrome.runtime.getManifest?.() || {};
+    const hasIdentity =
+      Array.isArray(mf.permissions) && mf.permissions.includes('identity');
+    const oauth = mf.oauth2 || {};
+    const clientId = oauth.client_id || '';
+    const scopes = oauth.scopes || [];
+    const hasDriveScope = scopes.includes(
+      'https://www.googleapis.com/auth/drive.appdata'
     );
-    const authMod = await import(
-      'https://www.gstatic.com/firebasejs/9.24.0/firebase-auth.js'
-    );
-    const fsMod = await import(
-      'https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore.js'
-    );
-    firebaseApp = appMod.initializeApp(firebaseConfig);
-    auth = authMod.getAuth(firebaseApp);
-    firestore = fsMod.getFirestore(firebaseApp);
-  } catch (e) {
-    throw new Error('Failed to load Firebase SDK');
+    const clientLooksSet = clientId && !clientId.startsWith('YOUR_CLIENT_ID');
+    return hasIdentity && hasDriveScope && clientLooksSet;
+  } catch (_) {
+    return false;
   }
+}
+
+function getAuthToken(interactive = false) {
+  if (!isCloudConfigured()) {
+    return Promise.reject(
+      new Error(
+        'Cloud sync not configured: set oauth2 client_id and Drive appdata scope in manifest.json'
+      )
+    );
+  }
+  return new Promise((resolve, reject) => {
+    try {
+      chrome.identity.getAuthToken({ interactive }, token => {
+        const err = chrome.runtime.lastError;
+        if (err || !token) {
+          reject(err || new Error('No auth token'));
+        } else {
+          resolve(token);
+        }
+      });
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+async function driveRequest(path, options = {}) {
+  const { method = 'GET', token, query, body, headers } = options;
+  const url = new URL(`https://www.googleapis.com/drive/v3/${path}`);
+  if (query) {
+    Object.entries(query).forEach(([k, v]) => url.searchParams.set(k, v));
+  }
+
+  const fetchOptions = {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(body && typeof body === 'object' && !(body instanceof FormData)
+        ? { 'Content-Type': 'application/json' }
+        : {}),
+      ...headers,
+    },
+  };
+
+  if (body) {
+    fetchOptions.body =
+      typeof body === 'object' && !(body instanceof FormData)
+        ? JSON.stringify(body)
+        : body;
+  }
+
+  const response = await fetch(url.toString(), fetchOptions);
+  if (!response.ok) {
+    throw new Error(
+      `Drive API error: ${response.status} ${response.statusText}`
+    );
+  }
+  return response.json();
+}
+
+async function findSettingsFile(token) {
+  if (cachedFileId) return cachedFileId;
+
+  const result = await driveRequest('files', {
+    token,
+    query: {
+      spaces: 'appDataFolder',
+      q: `name='${SETTINGS_FILENAME}' and trashed=false`,
+      fields: 'files(id,name)',
+    },
+  });
+
+  const file = result.files?.[0];
+  if (file) {
+    cachedFileId = file.id;
+  }
+  return cachedFileId;
+}
+
+async function createSettingsFile(token, settings) {
+  const metadata = {
+    name: SETTINGS_FILENAME,
+    parents: ['appDataFolder'],
+  };
+
+  const boundary = 'imaginex_boundary_' + Math.random().toString(36).slice(2);
+  const body =
+    `--${boundary}\r\n` +
+    `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+    JSON.stringify(metadata) +
+    '\r\n' +
+    `--${boundary}\r\n` +
+    `Content-Type: application/json\r\n\r\n` +
+    JSON.stringify(settings) +
+    '\r\n' +
+    `--${boundary}--`;
+
+  const response = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': `multipart/related; boundary=${boundary}`,
+      },
+      body,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to create settings file');
+  }
+
+  const result = await response.json();
+  cachedFileId = result.id;
+  return cachedFileId;
 }
 
 export async function signIn(interactive = true) {
-  await ensureFirebase();
-  if (user) return user;
-  const { GoogleAuthProvider, signInWithPopup } = await import(
-    'https://www.gstatic.com/firebasejs/9.24.0/firebase-auth.js'
-  );
-  try {
-    const cred = await signInWithPopup(auth, new GoogleAuthProvider());
-    user = cred.user;
-    return user;
-  } catch (e) {
-    throw new Error('Sign-in failed');
-  }
+  const token = await getAuthToken(interactive);
+  return { token };
 }
 
 export function getCurrentUser() {
-  return user;
+  return null; // Not needed for Drive API
 }
 
 export async function saveSettingsToCloud(settings) {
-  await ensureFirebase();
-  if (!user) await signIn(true);
-  const { doc, setDoc } = await import(
-    'https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore.js'
-  );
-  const docRef = doc(firestore, 'settings', user.uid);
-  await setDoc(docRef, settings, { merge: true });
+  const token = await getAuthToken(true);
+  let fileId = await findSettingsFile(token);
+
+  if (!fileId) {
+    fileId = await createSettingsFile(token, settings);
+  } else {
+    const response = await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settings),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to update settings file');
+    }
+  }
+
   return true;
 }
 
 export async function loadSettingsFromCloud() {
-  await ensureFirebase();
-  if (!user) await signIn(true);
-  const { doc, getDoc } = await import(
-    'https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore.js'
+  const token = await getAuthToken(true);
+  const fileId = await findSettingsFile(token);
+
+  if (!fileId) {
+    throw new Error('No cloud settings found');
+  }
+
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
   );
-  const docRef = doc(firestore, 'settings', user.uid);
-  const snap = await getDoc(docRef);
-  if (!snap.exists()) throw new Error('No cloud settings found');
-  return snap.data();
+
+  if (!response.ok) {
+    throw new Error('Failed to download settings file');
+  }
+
+  return response.json();
 }

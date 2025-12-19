@@ -131,39 +131,29 @@ Implementation notes:
 
 ## Manual Cloud Sync
 
-You can manually save and load your extension settings to/from the cloud using Firestore:
+You can manually save and load your extension settings to/from Google Drive:
 
 1. Open the options page.
-2. Use **Save to Cloud** to upload your current settings to your Google account (Firestore).
+2. Use **Save to Cloud** to upload your current settings to your Google Drive (stored in app data folder, invisible to you).
 3. Use **Load from Cloud** to fetch your latest cloud settings and apply them locally.
 
 Setup:
 
-- You must provide your own Firebase project credentials in `cloudSync.js` (see the placeholder `firebaseConfig`).
-- The extension will prompt you to sign in with your Google account the first time you use cloud sync.
-- Settings are stored in Firestore under the `settings/{uid}` document for your account.
+- No configuration needed! Just sign in with your Google account when prompted.
+- The extension uses Google Drive's appDataFolder, so the settings file won't clutter your Drive.
+- Settings are stored as `imaginex-settings.json` in your private app data space.
 
 Security:
 
-- Only you can access your settings document (Firestore rules should restrict access to authenticated user).
-- No settings are sent to any server except your own Firestore instance.
+- Only you can access your settings file - it's stored in your personal Google Drive app data folder.
+- The extension only requests permission to read/write its own settings file.
+- No data is sent to any third-party servers.
 
 Troubleshooting:
 
-- If you see "Cloud save failed" or "Cloud load failed", check your Firebase config and authentication.
-- Make sure your Firestore rules allow read/write for authenticated users.
-
-Example Firestore rules:
-
-```
-service cloud.firestore {
-	match /databases/{database}/documents {
-		match /settings/{userId} {
-			allow read, write: if request.auth != null && request.auth.uid == userId;
-		}
-	}
-}
-```
+- If you see "Cloud save failed" or "Cloud load failed", make sure you're signed into your Google account in Chrome.
+- The extension needs the "identity" permission to use Google OAuth - this should be granted automatically.
+- Settings sync works across any device where you're signed into the same Google account.
 
 ## Privacy & Security
 
