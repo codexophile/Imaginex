@@ -42,6 +42,26 @@ Advanced:
 - You can set `mode` to `"srcsetBest"` to pick the highest-quality URL from a `srcset`-style string.
 - You can use a source of type `closestQueryAttr` to extract from nearby DOM structures:
   it finds `element.closest(closest)` then `querySelector(selector)` within it, then reads an attribute/property by `name`.
+- You can use a source of type `xpath` to extract values via XPath evaluated relative to the matched element.
+
+### XPath Shorthand (Optional)
+
+If you find the JSON verbose, the Options UI also accepts a shorthand format:
+
+- One step per line
+- Optional assignment: `varName = ...` (defaults to `url`)
+- Optional fallback: `expr1 || expr2 || expr3`
+- Optional mode: append `| srcsetBest`
+
+Examples:
+
+```text
+# pick best entry from a srcset string
+url = xpath("ancestor::div[contains(@class,'relative')][1]//picture/source[@type='image/webp']/@data-srcset") | srcsetBest
+
+# fall back to img src if the srcset isn't present
+url = xpath("ancestor::div[contains(@class,'relative')][1]//picture/source[@type='image/webp']/@srcset") || xpath("ancestor::div[contains(@class,'relative')][1]//picture/img/@src")
+```
 
 Built-in variables are always available:
 

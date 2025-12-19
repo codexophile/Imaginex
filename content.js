@@ -245,6 +245,21 @@
             target.getAttribute?.(source.name) || target[source.name] || null
           );
         }
+        case 'xpath': {
+          if (!source.expr) return null;
+          if (typeof document === 'undefined' || !document.evaluate)
+            return null;
+          const expr = String(source.expr);
+          // Evaluate relative to the matched element.
+          const result = document.evaluate(
+            expr,
+            element,
+            null,
+            XPathResult.STRING_TYPE,
+            null
+          );
+          return result ? result.stringValue || null : null;
+        }
         default:
           return null;
       }

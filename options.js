@@ -317,37 +317,124 @@ function handleEditRule(e) {
   els.ruleName.focus();
 }
 
-function parseExtractJson(text) {
+function parseExtractInput(text) {
   const raw = (text || '').trim();
   if (!raw) return null;
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (_) {
-    throw new Error('Extract Rules must be valid JSON.');
-  }
-  if (!Array.isArray(parsed)) {
-    throw new Error('Extract Rules JSON must be an array.');
-  }
-  for (const step of parsed) {
-    if (!step || typeof step !== 'object') {
-      throw new Error('Each Extract Rules step must be an object.');
+
+  // JSON mode
+  if (raw.startsWith('[')) {
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (_) {
+      throw new Error('Extract Rules must be valid JSON.');
     }
-    if (typeof step.var !== 'string' || !step.var.trim()) {
+    if (!Array.isArray(parsed)) {
+      throw new Error('Extract Rules JSON must be an array.');
+    }
+    for (const step of parsed) {
+      if (!step || typeof step !== 'object') {
+        throw new Error('Each Extract Rules step must be an object.');
+      }
+      if (typeof step.var !== 'string' || !step.var.trim()) {
+        throw new Error(
+          'Each Extract Rules step must include a non-empty "var".'
+        );
+      }
+      if (typeof step.regex !== 'string' || !step.regex.trim()) {
+        throw new Error(
+          'Each Extract Rules step must include a non-empty "regex".'
+        );
+      }
+      if (step.sources != null && !Array.isArray(step.sources)) {
+        throw new Error('If provided, "sources" must be an array.');
+      }
+    }
+    return parsed;
+  }
+
+  // Shorthand mode (human-friendly): one rule per line.
+  // Supports:
+  //   url = xpath('...') | srcsetBest
+  //   xpath('...')
+  //   xpath('...') || xpath('...') | srcsetBest
+  const steps = [];
+  const lines = raw.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const original = lines[i];
+    let line = original.trim();
+    if (!line) continue;
+    if (line.startsWith('#') || line.startsWith('//')) continue;
+
+    // Optional mode via pipe
+    let mode = null;
+    const pipeIdx = line.lastIndexOf('|');
+    if (pipeIdx !== -1) {
+      const rhs = line.slice(pipeIdx + 1).trim();
+      const lhs = line.slice(0, pipeIdx).trim();
+      if (rhs === 'srcsetBest') {
+        mode = rhs;
+        line = lhs;
+      }
+    }
+
+    // Optional assignment
+    let varName = 'url';
+    const eqIdx = line.indexOf('=');
+    let exprPart = line;
+    if (eqIdx !== -1) {
+      varName = line.slice(0, eqIdx).trim();
+      exprPart = line.slice(eqIdx + 1).trim();
+    }
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(varName)) {
       throw new Error(
-        'Each Extract Rules step must include a non-empty "var".'
+        `Invalid variable name on line ${
+          i + 1
+        }. Use letters/numbers/underscore (e.g. url, videoId).`
       );
     }
-    if (typeof step.regex !== 'string' || !step.regex.trim()) {
-      throw new Error(
-        'Each Extract Rules step must include a non-empty "regex".'
-      );
+
+    // Support fallbacks via ||
+    const exprs = exprPart
+      .split('||')
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(s => {
+        // Allow xpath('...') wrapper, otherwise treat as raw XPath.
+        if (/^xpath\s*\(/i.test(s)) {
+          const inner = s.replace(/^xpath\s*\(/i, '').replace(/\)\s*$/, '');
+          const q = inner.trim();
+          if (
+            (q.startsWith('"') && q.endsWith('"')) ||
+            (q.startsWith("'") && q.endsWith("'"))
+          ) {
+            return q.slice(1, -1);
+          }
+          return q;
+        }
+        if (
+          (s.startsWith('"') && s.endsWith('"')) ||
+          (s.startsWith("'") && s.endsWith("'"))
+        ) {
+          return s.slice(1, -1);
+        }
+        return s;
+      });
+
+    if (exprs.length === 0) {
+      throw new Error(`Missing XPath on line ${i + 1}.`);
     }
-    if (step.sources != null && !Array.isArray(step.sources)) {
-      throw new Error('If provided, "sources" must be an array.');
-    }
+
+    steps.push({
+      var: varName,
+      regex: '(.+)',
+      mode,
+      sources: exprs.map(expr => ({ type: 'xpath', expr })),
+    });
   }
-  return parsed;
+
+  if (steps.length === 0) return null;
+  return steps;
 }
 
 async function handleSaveRule() {
@@ -356,7 +443,7 @@ async function handleSaveRule() {
   const urlTemplate = els.ruleUrlTemplate.value.trim();
   let extract = null;
   try {
-    extract = parseExtractJson(els.ruleExtract.value);
+    extract = parseExtractInput(els.ruleExtract.value);
   } catch (e) {
     alert(e.message || String(e));
     return;
@@ -422,7 +509,7 @@ async function handleTestRule() {
   const urlTemplate = els.ruleUrlTemplate.value.trim();
   let extract = null;
   try {
-    extract = parseExtractJson(els.ruleExtract.value);
+    extract = parseExtractInput(els.ruleExtract.value);
   } catch (e) {
     alert(e.message || String(e));
     return;

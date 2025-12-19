@@ -371,14 +371,14 @@
         </div>
 
         <div class="form-group">
-          <label for="ruleExtract">Extract Rules (JSON) (Optional)</label>
+          <label for="ruleExtract">Extract Rules (JSON or XPath shorthand) (Optional)</label>
           <textarea id="ruleExtract" spellcheck="false"
-            placeholder='[\n  {\n    "var": "videoId",\n    "regex": "\\/vi(?:_webp)?\\/([^\\/]+)",\n    "sources": [{"type":"src"},{"type":"href"}]\n  }\n]'></textarea>
+            placeholder='// JSON example\n[\n  {\n    "var": "videoId",\n    "regex": "\\/vi(?:_webp)?\\/([^\\/]+)",\n    "sources": [{"type":"src"},{"type":"href"}]\n  }\n]\n\n# XPath shorthand example (one per line)\nurl = xpath("ancestor::div[contains(@class,\"relative\")][1]//picture/source[@type=\"image/webp\"]/@data-srcset") | srcsetBest\nurl = xpath("ancestor::div[contains(@class,\"relative\")][1]//picture/img/@src")'></textarea>
           <div class="help-text">
             Manifest V3 blocks running user-provided JavaScript (<code>unsafe-eval</code>), so rules use CSP-safe
             extractors.
-            Provide a JSON array of extract steps. Each step reads from one or more sources (e.g., <code>src</code>,
-            <code>href</code>, <code>attr</code>) and applies a regex.
+            Provide either a JSON array of extract steps, or XPath shorthand (one per line).
+            Each step reads from one or more sources and applies a regex.
             The first capture group becomes the variable value.
           </div>
         </div>
