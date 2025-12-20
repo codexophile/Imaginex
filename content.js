@@ -901,12 +901,19 @@
             try {
               if (target.matches(rule.selector)) {
                 handleCustomElementMouseEnter(event);
-                break;
+                return;
               }
             } catch (e) {
               // Invalid selector, ignore
             }
           }
+        }
+
+        // Check if element has background-image CSS (built-in support)
+        // Only check if it's not an IMG, A, or matched by custom rules
+        if (getBackgroundImageUrl(target)) {
+          handleBackgroundImageMouseEnter(event);
+          return;
         }
       },
       true
@@ -919,9 +926,10 @@
           handleImageMouseLeave(event);
         } else if (
           event.target.tagName === 'A' ||
-          event.target === currentImg
+          event.target === currentImg ||
+          getBackgroundImageUrl(event.target)
         ) {
-          // Handle anchor or custom element mouse leave
+          // Handle anchor, custom element, or background-image mouse leave
           hideEnlargedImage();
         }
       },
@@ -1022,6 +1030,61 @@
         const tempImg = document.createElement('img');
         tempImg.src = href;
         showEnlargedImage(tempImg, event.clientX, event.clientY, href);
+      }
+    }, HOVER_DELAY);
+  }
+
+  // Extract URL from background-image CSS property
+  function getBackgroundImageUrl(element) {
+    const style = window.getComputedStyle(element);
+    const bgImage = style.backgroundImage;
+
+    if (!bgImage || bgImage === 'none') {
+      return null;
+    }
+
+    // Extract URL from url("...") or url('...') or url(...)
+    const match = bgImage.match(/url\(["']?([^"')]+)["']?\)/);
+    if (match && match[1]) {
+      // Resolve relative URLs
+      try {
+        return new URL(match[1], window.location.href).href;
+      } catch (e) {
+        return match[1];
+      }
+    }
+
+    return null;
+  }
+
+  // Handle mouse enter on elements with background-image
+  async function handleBackgroundImageMouseEnter(event) {
+    const element = event.target;
+
+    // Skip if same element
+    if (element === currentImg) {
+      return;
+    }
+
+    const bgUrl = getBackgroundImageUrl(element);
+    if (!bgUrl) {
+      return;
+    }
+
+    currentImg = element;
+
+    // Clear any existing timer
+    if (hoverTimer) {
+      clearTimeout(hoverTimer);
+    }
+
+    // Set timer to show enlarged image after delay
+    hoverTimer = setTimeout(() => {
+      if (currentImg === element) {
+        // Create a temporary img element for the overlay
+        const tempImg = document.createElement('img');
+        tempImg.src = bgUrl;
+        showEnlargedImage(tempImg, event.clientX, event.clientY, bgUrl);
       }
     }, HOVER_DELAY);
   }
