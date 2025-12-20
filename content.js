@@ -6,6 +6,7 @@
   let hoverTimer = null;
   let noPopupTooltip = null;
   let HOVER_DELAY = 300; // default; will be overridden by settings
+  let ENABLE_ANIMATIONS = true; // default; will be overridden by settings
   let customRules = []; // Custom rules for finding higher-quality images
 
   const SETTINGS_INTERNAL_KEY = '__settings_v1';
@@ -13,8 +14,21 @@
   function applySettingsFromStorage(raw) {
     if (!raw || typeof raw !== 'object') return;
     if (typeof raw.hoverDelay === 'number') HOVER_DELAY = raw.hoverDelay;
+    if (typeof raw.enableAnimations === 'boolean') {
+      ENABLE_ANIMATIONS = raw.enableAnimations;
+      applyAnimationSettings();
+    }
     if (Array.isArray(raw.customRules)) {
       customRules = raw.customRules.filter(r => r && r.enabled);
+    }
+  }
+
+  // Apply or remove animation classes/styles based on settings
+  function applyAnimationSettings() {
+    if (ENABLE_ANIMATIONS) {
+      document.documentElement.classList.remove('imagus-no-animations');
+    } else {
+      document.documentElement.classList.add('imagus-no-animations');
     }
   }
 
@@ -815,7 +829,23 @@
         if (customUrl) {
           // Custom rule found, show image from custom URL
           showEnlargedImage(img, event.clientX, event.clientY, customUrl);
-        } else if (isImageScaledDown(img)) {
+          return;
+        }
+
+        // If the image is wrapped in a link that points to an image URL,
+        // prefer the anchor's href as the high-resolution source.
+        const parentAnchor = img.closest('a');
+        const href = parentAnchor?.href || null;
+        if (href && isImageURL(href)) {
+          // Avoid redundant load if href equals current src/best source
+          const bestFromImg = getBestImageSource(img);
+          if (href !== bestFromImg) {
+            showEnlargedImage(img, event.clientX, event.clientY, href);
+            return;
+          }
+        }
+
+        if (isImageScaledDown(img)) {
           // No custom rule, but image is scaled down - show enlarged version
           showEnlargedImage(img, event.clientX, event.clientY);
         } else {

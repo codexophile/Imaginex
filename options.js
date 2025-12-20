@@ -42,6 +42,7 @@ async function init() {
   els.hoverDelay = $('hoverDelay');
   els.zoom = $('zoom');
   els.enablePrefetch = $('enablePrefetch');
+  els.enableAnimations = $('enableAnimations');
   els.saveBtn = $('saveBtn');
   els.resetBtn = $('resetBtn');
   els.status = $('status');
@@ -95,6 +96,7 @@ function bindValues(s) {
   els.hoverDelay.value = s.hoverDelay;
   els.zoom.value = s.zoom;
   els.enablePrefetch.checked = !!s.enablePrefetch;
+  els.enableAnimations.checked = !!s.enableAnimations;
   setDirty(false);
 }
 
@@ -104,6 +106,7 @@ function gatherPatch() {
     hoverDelay: Number(els.hoverDelay.value),
     zoom: Number(els.zoom.value),
     enablePrefetch: !!els.enablePrefetch.checked,
+    enableAnimations: !!els.enableAnimations.checked,
   };
 }
 
@@ -133,11 +136,13 @@ function onChange() {
 }
 
 function wireEvents() {
-  ['theme', 'hoverDelay', 'zoom', 'enablePrefetch'].forEach(id => {
-    const el = els[id];
-    const evt = el.type === 'checkbox' ? 'change' : 'input';
-    el.addEventListener(evt, onChange);
-  });
+  ['theme', 'hoverDelay', 'zoom', 'enablePrefetch', 'enableAnimations'].forEach(
+    id => {
+      const el = els[id];
+      const evt = el.type === 'checkbox' ? 'change' : 'input';
+      el.addEventListener(evt, onChange);
+    }
+  );
   els.saveBtn.addEventListener('click', () => doSave(false));
   els.resetBtn.addEventListener('click', resetDefaults);
 

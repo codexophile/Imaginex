@@ -40,6 +40,7 @@ Added a comprehensive custom rules system that allows users to define how the ex
 - Support for both IMG and non-IMG elements
 - Integration with existing hover detection system
 - Debug logging for troubleshooting
+- Automatic preference for parent anchor href when hovering an `img` inside a link if the `href` is an image URL (uses higher-resolution link targets by default without needing a custom rule)
 
 ### 5. Documentation
 

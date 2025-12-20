@@ -6,6 +6,7 @@ const SETTINGS_DEFAULTS = Object.freeze({
   theme: 'light', // UI theme for future options page styling
   zoom: 1.0, // Placeholder for potential scaling of enlarged image
   enablePrefetch: true, // Future optimization: prefetch high-res images on hover intent
+  enableAnimations: true, // Enable/disable image animations and transitions
   hoverDelay: 300, // Delay before showing enlarged image (ms)
   apiKeys: {}, // User-defined API keys for rules that fetch from external APIs
   customRules: [

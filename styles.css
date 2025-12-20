@@ -110,3 +110,22 @@ div[data-testid*='overlay']:empty {
 .image-enlarger-no-popup {
   animation: nopopup-pulse 2s ease-in-out infinite;
 }
+
+/* Disable all animations when user preference is set */
+.imagus-no-animations #image-enlarger-overlay {
+  transition: none !important;
+  animation: none !important;
+}
+
+.imagus-no-animations #image-enlarger-overlay img {
+  transition: none !important;
+}
+
+.imagus-no-animations .image-enlarger-no-popup {
+  transition: none !important;
+  animation: none !important;
+}
+
+.imagus-no-animations .image-enlarger-no-popup-alt {
+  transition: none !important;
+}
