@@ -859,9 +859,12 @@
       overlayImg.style.height = displayHeight + 'px';
     }
 
-    // Set a reasonable size immediately, then refine after load
+    // Set a reasonable size immediately, position, then refine after load
     applySize(bestDimensions?.width || 0, bestDimensions?.height || 0);
+    // Avoid initial flicker: render hidden and position before showing
+    hoverOverlay.style.opacity = '0';
     hoverOverlay.style.display = 'block';
+    positionOverlay(hoverOverlay, mouseX, mouseY);
 
     // Handlers must be set before src assignment (cached images can load very fast)
     overlayImg.onload = () => {
@@ -869,6 +872,8 @@
       applySize(overlayImg.naturalWidth, overlayImg.naturalHeight);
       hoverOverlay.offsetHeight;
       positionOverlay(hoverOverlay, mouseX, mouseY);
+      // Reveal after image has loaded and overlay is sized/positioned
+      hoverOverlay.style.opacity = '1';
     };
 
     overlayImg.onerror = () => {
@@ -897,6 +902,7 @@
       applySize(overlayImg.naturalWidth, overlayImg.naturalHeight);
       hoverOverlay.offsetHeight;
       positionOverlay(hoverOverlay, mouseX, mouseY);
+      hoverOverlay.style.opacity = '1';
     }
   }
 
