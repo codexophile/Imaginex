@@ -895,7 +895,12 @@
           for (const rule of customRules) {
             try {
               if (target.matches(rule.selector)) {
-                console.log('Custom rule matched:', rule.name, 'for element:', target);
+                console.log(
+                  'Custom rule matched:',
+                  rule.name,
+                  'for element:',
+                  target
+                );
                 handleCustomElementMouseEnter(event);
                 return;
               }
