@@ -114,8 +114,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const wrapped = `(() => {
           try {
             const ctx = ${JSON.stringify(ctxObj)};
+            const trigger = (ctx && ctx.triggerSelector) ? document.querySelector(ctx.triggerSelector) : null;
             const returnURL = (u) => {
               try { document.dispatchEvent(new CustomEvent('imagus:userScriptURL', { detail: String(u) })); } catch (_) {}
+            };
+            const returnElement = (el) => {
+              try {
+                const token = 'imagus-return-' + Math.random().toString(36).slice(2);
+                if (el && el.setAttribute) el.setAttribute('data-imagus-return', token);
+                const sel = '[data-imagus-return="' + token + '"]';
+                document.dispatchEvent(new CustomEvent('imagus:userScriptElement', { detail: sel }));
+              } catch (_) {}
             };
             const log = (...a) => { try { document.dispatchEvent(new CustomEvent('imagus:userScriptLog', { detail: a })); } catch (_) {} };
             ${codeStr}

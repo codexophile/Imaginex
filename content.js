@@ -362,6 +362,49 @@
     return candidates[0].url;
   }
 
+  // Derive best URL from an image-related element (picture/source/img)
+  function bestSrcFromElement(el) {
+    if (!el) return null;
+    try {
+      const tag = (el.tagName || '').toLowerCase();
+      if (tag === 'picture') {
+        const webp = el.querySelector('source[type="image/webp"][srcset]');
+        const any = webp || el.querySelector('source[srcset]');
+        const srcset = any?.getAttribute('srcset') || '';
+        const fromSource = pickBestFromSrcsetString(srcset);
+        if (fromSource) return fromSource;
+        const img = el.querySelector('img');
+        if (img) return bestSrcFromElement(img);
+      }
+      if (tag === 'source') {
+        const srcset = el.getAttribute('srcset') || '';
+        const fromSet = pickBestFromSrcsetString(srcset);
+        if (fromSet) return fromSet;
+      }
+      if (tag === 'img') {
+        const pic = el.closest?.('picture');
+        if (pic) {
+          const webp = pic.querySelector('source[type="image/webp"][srcset]');
+          const any = webp || pic.querySelector('source[srcset]');
+          const srcset = any?.getAttribute('srcset') || '';
+          const fromSource = pickBestFromSrcsetString(srcset);
+          if (fromSource) return fromSource;
+        }
+        const fromSet = pickBestFromSrcsetString(el.getAttribute('srcset') || '');
+        if (fromSet) return fromSet;
+        return el.currentSrc || el.src || null;
+      }
+      // Fallback: try common attributes
+      const rawSet = el.getAttribute?.('srcset') || '';
+      const fromSet = pickBestFromSrcsetString(rawSet);
+      if (fromSet) return fromSet;
+      const raw = el.getAttribute?.('src') || '';
+      return raw || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   function extractVariables(element, rule) {
     const variables = {};
 
@@ -472,6 +515,8 @@
           typeof rule.userScript === 'string' &&
           rule.userScript.trim()
         ) {
+          const token = 'imagus-trigger-' + Math.random().toString(36).slice(2);
+          try { element.setAttribute('data-imagus-trigger', token); } catch (_) {}
           const ctx = {
             selector: rule.selector,
             src:
@@ -485,6 +530,7 @@
               closestDeep(element, 'a')?.href ||
               null,
             variables: variables,
+            triggerSelector: `[data-imagus-trigger="${token}"]`,
           };
 
           const urlFromScript = await new Promise(resolve => {
@@ -503,10 +549,30 @@
               document.removeEventListener('imagus:userScriptError', onErr);
               resolve('');
             };
+            const onEl = e => {
+              if (resolved) return;
+              resolved = true;
+              document.removeEventListener('imagus:userScriptURL', onOk);
+              document.removeEventListener('imagus:userScriptError', onErr);
+              document.removeEventListener('imagus:userScriptElement', onEl);
+              const sel = String(e.detail || '');
+              let url = '';
+              try {
+                const returned = sel ? document.querySelector(sel) : null;
+                if (returned) {
+                  url = bestSrcFromElement(returned) || '';
+                  try { returned.removeAttribute('data-imagus-return'); } catch (_) {}
+                }
+              } catch (_) {}
+              resolve(url);
+            };
             document.addEventListener('imagus:userScriptURL', onOk, {
               once: true,
             });
             document.addEventListener('imagus:userScriptError', onErr, {
+              once: true,
+            });
+            document.addEventListener('imagus:userScriptElement', onEl, {
               once: true,
             });
             chrome.runtime.sendMessage(
@@ -521,13 +587,23 @@
               resolved = true;
               document.removeEventListener('imagus:userScriptURL', onOk);
               document.removeEventListener('imagus:userScriptError', onErr);
+              document.removeEventListener('imagus:userScriptElement', onEl);
+              try { element.removeAttribute('data-imagus-trigger'); } catch (_) {}
               resolve('');
             }, 3000);
           });
 
           if (urlFromScript && /^https?:\/\//i.test(urlFromScript)) {
+            try { element.removeAttribute('data-imagus-trigger'); } catch (_) {}
             return urlFromScript;
           }
+          // If we received a derived URL from element return
+          if (urlFromScript && !urlFromScript.includes('{')) {
+            try { element.removeAttribute('data-imagus-trigger'); } catch (_) {}
+            return urlFromScript;
+          }
+          // If script didn't return usable URL, clean up attribute
+          try { element.removeAttribute('data-imagus-trigger'); } catch (_) {}
         }
 
         // If rule has API config, fetch from external API
@@ -1327,6 +1403,8 @@
                 typeof rule.userScript === 'string' &&
                 rule.userScript.trim()
               ) {
+                const token = 'imagus-trigger-' + Math.random().toString(36).slice(2);
+                try { el.setAttribute('data-imagus-trigger', token); } catch (_) {}
                 const ctx = {
                   selector,
                   src:
@@ -1337,6 +1415,7 @@
                     closestDeep(el, 'a')?.href ||
                     null,
                   variables,
+                  triggerSelector: `[data-imagus-trigger="${token}"]`,
                 };
 
                 const urlFromScript = await new Promise(resolve => {
@@ -1359,12 +1438,36 @@
                       'imagus:userScriptError',
                       onErr
                     );
+                    document.removeEventListener('imagus:userScriptElement', onEl);
                     resolve('');
+                  };
+                  const onEl = e => {
+                    if (resolved) return;
+                    resolved = true;
+                    document.removeEventListener('imagus:userScriptURL', onOk);
+                    document.removeEventListener(
+                      'imagus:userScriptError',
+                      onErr
+                    );
+                    document.removeEventListener('imagus:userScriptElement', onEl);
+                    const sel = String(e.detail || '');
+                    let derived = '';
+                    try {
+                      const returned = sel ? document.querySelector(sel) : null;
+                      if (returned) {
+                        derived = bestSrcFromElement(returned) || '';
+                        try { returned.removeAttribute('data-imagus-return'); } catch (_) {}
+                      }
+                    } catch (_) {}
+                    resolve(derived);
                   };
                   document.addEventListener('imagus:userScriptURL', onOk, {
                     once: true,
                   });
                   document.addEventListener('imagus:userScriptError', onErr, {
+                    once: true,
+                  });
+                  document.addEventListener('imagus:userScriptElement', onEl, {
                     once: true,
                   });
                   chrome.runtime.sendMessage({
@@ -1380,14 +1483,25 @@
                       'imagus:userScriptError',
                       onErr
                     );
+                    document.removeEventListener('imagus:userScriptElement', onEl);
+                    try { el.removeAttribute('data-imagus-trigger'); } catch (_) {}
                     resolve('');
                   }, 3000);
                 });
 
-                if (urlFromScript && /^https?:\/\//i.test(urlFromScript)) {
-                  url = urlFromScript;
-                  unresolvedPlaceholders = false;
+                if (urlFromScript) {
+                  if (/^https?:\/\//i.test(urlFromScript)) {
+                    url = urlFromScript;
+                    unresolvedPlaceholders = false;
+                    try { el.removeAttribute('data-imagus-trigger'); } catch (_) {}
+                  } else if (!urlFromScript.includes('{')) {
+                    url = urlFromScript;
+                    unresolvedPlaceholders = false;
+                    try { el.removeAttribute('data-imagus-trigger'); } catch (_) {}
+                  }
                 }
+                // Clean up attribute if script didn't yield usable URL
+                try { el.removeAttribute('data-imagus-trigger'); } catch (_) {}
               }
 
               // Try API if still no usable URL and API provided
