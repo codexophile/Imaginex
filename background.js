@@ -101,6 +101,49 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     })();
     return true; // async
   }
+  // Execute user-provided JavaScript in USER_SCRIPT world
+  if (msg.type === 'imagus:execUserScript') {
+    (async () => {
+      try {
+        const tabId = sender?.tab?.id || msg.tabId;
+        if (!tabId) throw new Error('No tabId to execute user script');
+        const codeStr = String(msg.code || '').trim();
+        const ctxObj = msg.ctx || {};
+        if (!codeStr) throw new Error('Empty user script');
+
+        const wrapped = `(() => {
+          try {
+            const IMAGUS_CTX = ${JSON.stringify(ctxObj)};
+            const returnURL = (u) => {
+              try { document.dispatchEvent(new CustomEvent('imagus:userScriptURL', { detail: String(u) })); } catch (_) {}
+            };
+            const log = (...a) => { try { document.dispatchEvent(new CustomEvent('imagus:userScriptLog', { detail: a })); } catch (_) {} };
+            ${codeStr}
+          } catch (e) {
+            try { document.dispatchEvent(new CustomEvent('imagus:userScriptError', { detail: String(e && e.message || e) })); } catch (_) {}
+          }
+        })();`;
+
+        if (!chrome?.userScripts?.execute) {
+          sendResponse({
+            ok: false,
+            error:
+              'userScripts API unavailable. Enable userScripts permission.',
+          });
+          return;
+        }
+        await chrome.userScripts.execute({
+          target: { tabId },
+          world: 'USER_SCRIPT',
+          js: [{ code: wrapped }],
+        });
+        sendResponse({ ok: true });
+      } catch (err) {
+        sendResponse({ ok: false, error: err.message || String(err) });
+      }
+    })();
+    return true; // async
+  }
 });
 
 // Optional: Add context menu or browser action functionality in the future

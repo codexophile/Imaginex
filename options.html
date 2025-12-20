@@ -417,6 +417,21 @@
           </div>
         </div>
 
+        <div class="form-group">
+          <label for="ruleUserScript">Custom JavaScript (Advanced) (Optional)</label>
+          <textarea id="ruleUserScript" spellcheck="false"
+            placeholder='// Example:\n// returnURL("https://example.com/highres.jpg");\n// Access DOM directly or use IMAGUS_CTX variables.'></textarea>
+          <div class="help-text">
+            Executes user-provided JavaScript in a safe user script world after a match. Provide a final image URL by
+            calling
+            <code>returnURL(url)</code>. The script runs on the page and can read DOM. Context variables are available
+            in
+            <code>IMAGUS_CTX</code>, including <code>selector</code>, <code>src</code>, <code>href</code>, and any
+            extracted variables.
+            Requires the <code>userScripts</code> permission; Chrome may prompt once.
+          </div>
+        </div>
+
         <div class="form-actions">
           <button id="testRuleBtn" class="secondary">Test on Current Tab</button>
           <button id="saveRuleBtn">Save Rule</button>

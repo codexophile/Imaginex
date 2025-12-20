@@ -65,6 +65,7 @@ async function init() {
   els.ruleSelector = $('ruleSelector');
   els.ruleUrlTemplate = $('ruleUrlTemplate');
   els.ruleExtract = $('ruleExtract');
+  els.ruleUserScript = $('ruleUserScript');
   els.ruleApi = $('ruleApi');
   els.saveRuleBtn = $('saveRuleBtn');
   els.cancelRuleBtn = $('cancelRuleBtn');
@@ -386,6 +387,7 @@ function handleAddRule() {
   els.ruleSelector.value = '';
   els.ruleUrlTemplate.value = '';
   els.ruleExtract.value = '';
+  els.ruleUserScript.value = '';
   els.ruleApi.value = '';
   els.ruleForm.style.display = 'block';
   els.ruleName.focus();
@@ -407,6 +409,8 @@ function handleEditRule(e) {
   } else {
     els.ruleExtract.value = '';
   }
+  els.ruleUserScript.value =
+    typeof rule.userScript === 'string' ? rule.userScript : '';
   if (rule.api && typeof rule.api === 'object') {
     els.ruleApi.value = JSON.stringify(rule.api, null, 2);
   } else {
@@ -419,6 +423,20 @@ function handleEditRule(e) {
 function parseExtractInput(text) {
   const raw = (text || '').trim();
   if (!raw) return null;
+
+  const sanitizeFlags = f => {
+    if (f == null) return undefined;
+    const s = String(f).trim();
+    if (!s) return undefined;
+    const allowed = 'gimsuy';
+    const uniq = Array.from(new Set(s.split('')))
+      .filter(ch => allowed.includes(ch))
+      .join('');
+    if (uniq.length !== s.length) {
+      throw new Error('Invalid regular expression flags. Allowed: g i m s u y');
+    }
+    return uniq || undefined;
+  };
 
   // JSON mode
   if (raw.startsWith('[')) {
@@ -447,6 +465,21 @@ function parseExtractInput(text) {
       }
       if (step.sources != null && !Array.isArray(step.sources)) {
         throw new Error('If provided, "sources" must be an array.');
+      }
+      // Support slash-form regex: "/pattern/flags"
+      const m = step.regex.match(/^\/(.*)\/([a-z]*)$/);
+      if (m) {
+        step.regex = m[1];
+        const fParsed = sanitizeFlags(m[2]);
+        if (fParsed) {
+          step.flags = step.flags
+            ? sanitizeFlags(String(step.flags) + fParsed)
+            : fParsed;
+        }
+      }
+      // Validate flags if provided
+      if (step.flags !== undefined) {
+        step.flags = sanitizeFlags(step.flags);
       }
     }
     return parsed;
@@ -496,6 +529,7 @@ function parseExtractInput(text) {
 
     // Optional regex override via '~ <regex>' (quotes optional)
     let regexString = '(.+)';
+    let regexFlags = undefined;
     const tildeIdx = exprPart.lastIndexOf('~');
     if (tildeIdx !== -1) {
       const regexPart = exprPart.slice(tildeIdx + 1).trim();
@@ -510,6 +544,12 @@ function parseExtractInput(text) {
         regexString = regexPart.slice(1, -1);
       } else {
         regexString = regexPart;
+      }
+      // Allow slash-form with flags in shorthand: /pattern/flags
+      const m = regexString.match(/^\/(.*)\/([a-z]*)$/);
+      if (m) {
+        regexString = m[1];
+        regexFlags = sanitizeFlags(m[2]);
       }
       if (!regexString) {
         throw new Error(`Empty regex after '~' on line ${i + 1}.`);
@@ -600,6 +640,7 @@ function parseExtractInput(text) {
       var: varName,
       regex: regexString,
       mode,
+      flags: regexFlags,
       sources: exprs.map(x => {
         if (x.kind === 'xpath') return { type: 'xpath', expr: x.expr };
         if (x.kind === 'cssQueryAttr')
@@ -631,6 +672,8 @@ async function handleSaveRule() {
     alert(e.message || String(e));
     return;
   }
+
+  const userScript = (els.ruleUserScript.value || '').trim();
 
   const apiRaw = els.ruleApi.value.trim();
   let api = null;
@@ -666,9 +709,17 @@ async function handleSaveRule() {
     return;
   }
 
-  if (!urlTemplate && (!extract || extract.length === 0) && !api) {
+  // At least one mechanism must be provided to derive a URL:
+  // URL template, Extract Rules, API configuration, or Custom JavaScript.
+  const hasUserScript = !!userScript;
+  if (
+    !urlTemplate &&
+    (!extract || extract.length === 0) &&
+    !api &&
+    !hasUserScript
+  ) {
     alert(
-      'Either URL template, Extract Rules, or API configuration is required.'
+      'Either URL template, Extract Rules, API configuration, or Custom JavaScript is required.'
     );
     return;
   }
@@ -685,6 +736,7 @@ async function handleSaveRule() {
         selector,
         urlTemplate,
         extract,
+        userScript: userScript || undefined,
         api,
       };
       delete rules[index].customJS;
@@ -698,6 +750,7 @@ async function handleSaveRule() {
       selector,
       urlTemplate,
       extract,
+      userScript: userScript || undefined,
       api,
     };
     rules.push(newRule);
@@ -731,6 +784,36 @@ async function handleTestRule() {
     return;
   }
 
+  const userScript = (els.ruleUserScript.value || '').trim();
+  // Parse minimal API config for testing, if provided
+  let api = null;
+  const apiRaw = els.ruleApi.value.trim();
+  if (apiRaw) {
+    try {
+      api = JSON.parse(apiRaw);
+      if (api && typeof api === 'object') {
+        if (!api.url || typeof api.url !== 'string') {
+          alert('API configuration must include a "url" string property.');
+          return;
+        }
+        if (api.path !== undefined && typeof api.path !== 'string') {
+          alert('API "path" must be a string if provided.');
+          return;
+        }
+        if (api.headers !== undefined && typeof api.headers !== 'object') {
+          alert('API "headers" must be an object if provided.');
+          return;
+        }
+      } else {
+        alert('API configuration must be a JSON object.');
+        return;
+      }
+    } catch (err) {
+      alert('Invalid JSON in API configuration: ' + err.message);
+      return;
+    }
+  }
+
   if (!selector) {
     alert('CSS selector is required to test the rule.');
     return;
@@ -752,7 +835,14 @@ async function handleTestRule() {
 
     const payload = {
       type: 'imagus:testRule',
-      rule: { name, selector, urlTemplate, extract },
+      rule: {
+        name,
+        selector,
+        urlTemplate,
+        extract,
+        userScript: userScript || undefined,
+        api,
+      },
     };
     const response = await new Promise((resolve, reject) => {
       chrome.tabs.sendMessage(tab.id, payload, res => {

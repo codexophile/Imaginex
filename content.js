@@ -466,6 +466,70 @@
 
         const variables = extractVariables(element, rule);
 
+        // Optional: execute Custom JavaScript regardless of API presence
+        if (
+          rule.userScript &&
+          typeof rule.userScript === 'string' &&
+          rule.userScript.trim()
+        ) {
+          const ctx = {
+            selector: rule.selector,
+            src:
+              element.currentSrc ||
+              element.src ||
+              element.getAttribute?.('src') ||
+              null,
+            href:
+              element.href ||
+              element.getAttribute?.('href') ||
+              closestDeep(element, 'a')?.href ||
+              null,
+            variables: variables,
+          };
+
+          const urlFromScript = await new Promise(resolve => {
+            let resolved = false;
+            const onOk = e => {
+              if (resolved) return;
+              resolved = true;
+              document.removeEventListener('imagus:userScriptURL', onOk);
+              document.removeEventListener('imagus:userScriptError', onErr);
+              resolve(String(e.detail || ''));
+            };
+            const onErr = e => {
+              if (resolved) return;
+              resolved = true;
+              document.removeEventListener('imagus:userScriptURL', onOk);
+              document.removeEventListener('imagus:userScriptError', onErr);
+              resolve('');
+            };
+            document.addEventListener('imagus:userScriptURL', onOk, {
+              once: true,
+            });
+            document.addEventListener('imagus:userScriptError', onErr, {
+              once: true,
+            });
+            chrome.runtime.sendMessage(
+              { type: 'imagus:execUserScript', code: rule.userScript, ctx },
+              res => {
+                // background handles execution; result comes via DOM event
+              }
+            );
+            // Safety timeout
+            setTimeout(() => {
+              if (resolved) return;
+              resolved = true;
+              document.removeEventListener('imagus:userScriptURL', onOk);
+              document.removeEventListener('imagus:userScriptError', onErr);
+              resolve('');
+            }, 3000);
+          });
+
+          if (urlFromScript && /^https?:\/\//i.test(urlFromScript)) {
+            return urlFromScript;
+          }
+        }
+
         // If rule has API config, fetch from external API
         if (rule.api && rule.api.url) {
           try {
@@ -476,7 +540,6 @@
               });
             });
             const apiKeys = settingsData.apiKeys || {};
-
             // Substitute variables and settings in API URL and headers
             const substituteVars = str => {
               return String(str).replace(/\{([^}]+)\}/g, (m, key) => {
@@ -1224,30 +1287,151 @@
         }
       }
 
-      const results = matches.map(el => {
-        let variables = {};
-        let url = null;
-        let unresolvedPlaceholders = false;
-        let error = null;
-        try {
-          variables = extractVariables(el, { urlTemplate, extract });
-          if (!url && urlTemplate) {
-            url = applyTemplate(urlTemplate, variables);
-            unresolvedPlaceholders = /\{[^}]+\}/.test(url);
-          }
-        } catch (e) {
-          error = e.message || String(e);
-        }
-        return {
-          url,
-          variables,
-          unresolvedPlaceholders,
-          error,
-          elementSummary: summarize(el),
-        };
-      });
+      (async () => {
+        const results = await Promise.all(
+          matches.map(async el => {
+            let variables = {};
+            let url = null;
+            let unresolvedPlaceholders = false;
+            let error = null;
+            try {
+              variables = extractVariables(el, { urlTemplate, extract });
+              if (!url && urlTemplate) {
+                url = applyTemplate(urlTemplate, variables);
+                unresolvedPlaceholders = url ? url.includes('{') : false;
+              }
 
-      sendResponse({ ok: true, count: matches.length, results });
+              // Try Custom JavaScript if no usable URL yet
+              if (
+                (!url || unresolvedPlaceholders) &&
+                rule.userScript &&
+                typeof rule.userScript === 'string' &&
+                rule.userScript.trim()
+              ) {
+                const ctx = {
+                  selector,
+                  src:
+                    el.currentSrc || el.src || el.getAttribute?.('src') || null,
+                  href:
+                    el.href ||
+                    el.getAttribute?.('href') ||
+                    closestDeep(el, 'a')?.href ||
+                    null,
+                  variables,
+                };
+
+                const urlFromScript = await new Promise(resolve => {
+                  let resolved = false;
+                  const onOk = e => {
+                    if (resolved) return;
+                    resolved = true;
+                    document.removeEventListener('imagus:userScriptURL', onOk);
+                    document.removeEventListener(
+                      'imagus:userScriptError',
+                      onErr
+                    );
+                    resolve(String(e.detail || ''));
+                  };
+                  const onErr = e => {
+                    if (resolved) return;
+                    resolved = true;
+                    document.removeEventListener('imagus:userScriptURL', onOk);
+                    document.removeEventListener(
+                      'imagus:userScriptError',
+                      onErr
+                    );
+                    resolve('');
+                  };
+                  document.addEventListener('imagus:userScriptURL', onOk, {
+                    once: true,
+                  });
+                  document.addEventListener('imagus:userScriptError', onErr, {
+                    once: true,
+                  });
+                  chrome.runtime.sendMessage({
+                    type: 'imagus:execUserScript',
+                    code: rule.userScript,
+                    ctx,
+                  });
+                  setTimeout(() => {
+                    if (resolved) return;
+                    resolved = true;
+                    document.removeEventListener('imagus:userScriptURL', onOk);
+                    document.removeEventListener(
+                      'imagus:userScriptError',
+                      onErr
+                    );
+                    resolve('');
+                  }, 3000);
+                });
+
+                if (urlFromScript && /^https?:\/\//i.test(urlFromScript)) {
+                  url = urlFromScript;
+                  unresolvedPlaceholders = false;
+                }
+              }
+
+              // Try API if still no usable URL and API provided
+              if (
+                (!url || unresolvedPlaceholders) &&
+                rule.api &&
+                rule.api.url
+              ) {
+                const settingsData = await new Promise(resolve => {
+                  chrome.storage.local.get([SETTINGS_INTERNAL_KEY], result => {
+                    resolve(result[SETTINGS_INTERNAL_KEY] || {});
+                  });
+                });
+                const apiKeys = settingsData.apiKeys || {};
+                const substituteVars = str =>
+                  String(str).replace(/\{([^}]+)\}/g, (m, key) => {
+                    if (key.startsWith('settings.')) {
+                      const settingKey = key.slice(9);
+                      return apiKeys[settingKey] || m;
+                    }
+                    if (Object.prototype.hasOwnProperty.call(variables, key)) {
+                      return variables[key];
+                    }
+                    return m;
+                  });
+
+                const apiUrl = substituteVars(rule.api.url);
+                const headers = {};
+                if (rule.api.headers) {
+                  for (const [k, v] of Object.entries(rule.api.headers)) {
+                    headers[k] = substituteVars(v);
+                  }
+                }
+                const response = await chrome.runtime.sendMessage({
+                  type: 'imagus:fetchApi',
+                  url: apiUrl,
+                  path: rule.api.path || null,
+                  headers,
+                });
+                if (response && response.ok) {
+                  const apiUrlResult = String(response.data);
+                  if (apiUrlResult && !apiUrlResult.includes('{')) {
+                    url = apiUrlResult;
+                    unresolvedPlaceholders = false;
+                  }
+                }
+              }
+            } catch (e) {
+              error = e.message || String(e);
+            }
+            return {
+              url,
+              variables,
+              unresolvedPlaceholders,
+              error,
+              elementSummary: summarize(el),
+            };
+          })
+        );
+        sendResponse({ ok: true, count: matches.length, results });
+      })().catch(e => {
+        sendResponse({ ok: false, error: e.message || String(e) });
+      });
     } catch (e) {
       sendResponse({ ok: false, error: e.message || String(e) });
     }

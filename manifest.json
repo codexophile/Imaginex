@@ -7,7 +7,9 @@
     "activeTab",
     "tabs",
     "storage",
-    "identity"
+    "identity",
+    "scripting",
+    "userScripts"
   ],
   "content_scripts": [
     {
