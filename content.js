@@ -678,6 +678,7 @@
 
     // Handlers must be set before src assignment (cached images can load very fast)
     overlayImg.onload = () => {
+      delete overlayImg.dataset.hasFallbackAttempt;
       applySize(overlayImg.naturalWidth, overlayImg.naturalHeight);
       hoverOverlay.offsetHeight;
       positionOverlay(hoverOverlay, mouseX, mouseY);
@@ -685,10 +686,19 @@
 
     overlayImg.onerror = () => {
       console.warn('Failed to load enlarged image:', bestImageSource);
-      if (customUrl) {
+      if (customUrl && !overlayImg.dataset.hasFallbackAttempt) {
+        overlayImg.dataset.hasFallbackAttempt = 'true';
         const fallback = getBestImageSource(img);
         console.warn('Falling back to original image source:', fallback);
-        overlayImg.src = fallback;
+        if (fallback && fallback !== bestImageSource) {
+          overlayImg.src = fallback;
+        } else {
+          console.error('No valid fallback available, hiding overlay');
+          hideEnlargedImage();
+        }
+      } else {
+        console.error('Image load failed, hiding overlay');
+        hideEnlargedImage();
       }
     };
 
@@ -918,7 +928,7 @@
   }
 
   // Handle mouse enter on custom elements (non-IMG)
-  function handleCustomElementMouseEnter(event) {
+  async function handleCustomElementMouseEnter(event) {
     const element = event.target;
 
     // Skip if same element
@@ -934,10 +944,10 @@
     }
 
     // Set timer to show enlarged image after delay
-    hoverTimer = setTimeout(() => {
+    hoverTimer = setTimeout(async () => {
       if (currentImg === element) {
         // Check custom rules for this element
-        const customUrl = checkCustomRules(element);
+        const customUrl = await checkCustomRules(element);
 
         if (customUrl) {
           // Create a temporary img element for the overlay
