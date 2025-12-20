@@ -859,6 +859,12 @@
           return;
         }
 
+        // Handle anchor elements with image URLs
+        if (target.tagName === 'A') {
+          handleAnchorMouseEnter(event);
+          return;
+        }
+
         // Check if any custom rule matches this element (for non-IMG elements)
         if (customRules && customRules.length > 0) {
           for (const rule of customRules) {
@@ -881,8 +887,11 @@
       function (event) {
         if (event.target.tagName === 'IMG') {
           handleImageMouseLeave(event);
-        } else if (event.target === currentImg) {
-          // Handle custom element mouse leave
+        } else if (
+          event.target.tagName === 'A' ||
+          event.target === currentImg
+        ) {
+          // Handle anchor or custom element mouse leave
           hideEnlargedImage();
         }
       },
@@ -925,6 +934,66 @@
         positionOverlay(hoverOverlay, mouseX, mouseY);
       }
     });
+  }
+
+  // Check if a URL points to an image based on file extension
+  function isImageURL(url) {
+    if (!url || typeof url !== 'string') return false;
+    try {
+      // Remove query parameters and hash for extension check
+      const urlObj = new URL(url, window.location.href);
+      const pathname = urlObj.pathname.toLowerCase();
+      const imageExtensions = [
+        '.jpg',
+        '.jpeg',
+        '.png',
+        '.gif',
+        '.webp',
+        '.bmp',
+        '.svg',
+        '.avif',
+        '.jfif',
+        '.pjpeg',
+        '.pjp',
+        '.apng',
+      ];
+      return imageExtensions.some(ext => pathname.endsWith(ext));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Handle mouse enter on anchor elements with image URLs
+  async function handleAnchorMouseEnter(event) {
+    const anchor = event.target;
+    const href = anchor.href;
+
+    // Skip if same element or no href
+    if (anchor === currentImg || !href) {
+      return;
+    }
+
+    // Check if href points to an image
+    if (!isImageURL(href)) {
+      return;
+    }
+
+    currentImg = anchor;
+
+    // Clear any existing timer
+    if (hoverTimer) {
+      clearTimeout(hoverTimer);
+    }
+
+    // Set timer to show enlarged image after delay
+    hoverTimer = setTimeout(() => {
+      if (currentImg === anchor) {
+        // Create a temporary img element for the overlay
+        const tempImg = document.createElement('img');
+        tempImg.src = href;
+        showEnlargedImage(tempImg, event.clientX, event.clientY, href);
+      }
+    }, HOVER_DELAY);
   }
 
   // Handle mouse enter on custom elements (non-IMG)
