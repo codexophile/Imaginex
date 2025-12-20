@@ -113,7 +113,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         const wrapped = `(() => {
           try {
-            const IMAGUS_CTX = ${JSON.stringify(ctxObj)};
+            const ctx = ${JSON.stringify(ctxObj)};
             const returnURL = (u) => {
               try { document.dispatchEvent(new CustomEvent('imagus:userScriptURL', { detail: String(u) })); } catch (_) {}
             };
