@@ -515,9 +515,12 @@
                   Context includes <code>ctx</code> and <code>trigger</code> (the matched element).
                   <code>ctx</code> provides <code>selector</code>, <code>src</code>, <code>href</code>, and extracted
                   variables; <code>trigger</code> is a direct DOM reference to the element caught by your CSS selector.
-                  You can return either a URL via <code>returnURL(url)</code> or an element via <code>returnElement(el)</code>.
-                  If you return an element (e.g., an <code>&lt;img&gt;</code> or <code>&lt;picture&gt;</code>), the extension
-                  will automatically select the highest quality source from <code>srcset</code> or fall back to <code>src</code>.
+                  You can return either a URL via <code>returnURL(url)</code> or an element via
+                  <code>returnElement(el)</code>.
+                  If you return an element (e.g., an <code>&lt;img&gt;</code> or <code>&lt;picture&gt;</code>), the
+                  extension
+                  will automatically select the highest quality source from <code>srcset</code> or fall back to
+                  <code>src</code>.
                   Requires the <code>userScripts</code> permission; Chrome may prompt once.
                 </div>
               </div>

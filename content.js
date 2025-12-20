@@ -390,7 +390,9 @@
           const fromSource = pickBestFromSrcsetString(srcset);
           if (fromSource) return fromSource;
         }
-        const fromSet = pickBestFromSrcsetString(el.getAttribute('srcset') || '');
+        const fromSet = pickBestFromSrcsetString(
+          el.getAttribute('srcset') || ''
+        );
         if (fromSet) return fromSet;
         return el.currentSrc || el.src || null;
       }
@@ -516,7 +518,9 @@
           rule.userScript.trim()
         ) {
           const token = 'imagus-trigger-' + Math.random().toString(36).slice(2);
-          try { element.setAttribute('data-imagus-trigger', token); } catch (_) {}
+          try {
+            element.setAttribute('data-imagus-trigger', token);
+          } catch (_) {}
           const ctx = {
             selector: rule.selector,
             src:
@@ -561,7 +565,9 @@
                 const returned = sel ? document.querySelector(sel) : null;
                 if (returned) {
                   url = bestSrcFromElement(returned) || '';
-                  try { returned.removeAttribute('data-imagus-return'); } catch (_) {}
+                  try {
+                    returned.removeAttribute('data-imagus-return');
+                  } catch (_) {}
                 }
               } catch (_) {}
               resolve(url);
@@ -588,22 +594,30 @@
               document.removeEventListener('imagus:userScriptURL', onOk);
               document.removeEventListener('imagus:userScriptError', onErr);
               document.removeEventListener('imagus:userScriptElement', onEl);
-              try { element.removeAttribute('data-imagus-trigger'); } catch (_) {}
+              try {
+                element.removeAttribute('data-imagus-trigger');
+              } catch (_) {}
               resolve('');
             }, 3000);
           });
 
           if (urlFromScript && /^https?:\/\//i.test(urlFromScript)) {
-            try { element.removeAttribute('data-imagus-trigger'); } catch (_) {}
+            try {
+              element.removeAttribute('data-imagus-trigger');
+            } catch (_) {}
             return urlFromScript;
           }
           // If we received a derived URL from element return
           if (urlFromScript && !urlFromScript.includes('{')) {
-            try { element.removeAttribute('data-imagus-trigger'); } catch (_) {}
+            try {
+              element.removeAttribute('data-imagus-trigger');
+            } catch (_) {}
             return urlFromScript;
           }
           // If script didn't return usable URL, clean up attribute
-          try { element.removeAttribute('data-imagus-trigger'); } catch (_) {}
+          try {
+            element.removeAttribute('data-imagus-trigger');
+          } catch (_) {}
         }
 
         // If rule has API config, fetch from external API
@@ -1403,8 +1417,11 @@
                 typeof rule.userScript === 'string' &&
                 rule.userScript.trim()
               ) {
-                const token = 'imagus-trigger-' + Math.random().toString(36).slice(2);
-                try { el.setAttribute('data-imagus-trigger', token); } catch (_) {}
+                const token =
+                  'imagus-trigger-' + Math.random().toString(36).slice(2);
+                try {
+                  el.setAttribute('data-imagus-trigger', token);
+                } catch (_) {}
                 const ctx = {
                   selector,
                   src:
@@ -1438,7 +1455,10 @@
                       'imagus:userScriptError',
                       onErr
                     );
-                    document.removeEventListener('imagus:userScriptElement', onEl);
+                    document.removeEventListener(
+                      'imagus:userScriptElement',
+                      onEl
+                    );
                     resolve('');
                   };
                   const onEl = e => {
@@ -1449,14 +1469,19 @@
                       'imagus:userScriptError',
                       onErr
                     );
-                    document.removeEventListener('imagus:userScriptElement', onEl);
+                    document.removeEventListener(
+                      'imagus:userScriptElement',
+                      onEl
+                    );
                     const sel = String(e.detail || '');
                     let derived = '';
                     try {
                       const returned = sel ? document.querySelector(sel) : null;
                       if (returned) {
                         derived = bestSrcFromElement(returned) || '';
-                        try { returned.removeAttribute('data-imagus-return'); } catch (_) {}
+                        try {
+                          returned.removeAttribute('data-imagus-return');
+                        } catch (_) {}
                       }
                     } catch (_) {}
                     resolve(derived);
@@ -1483,8 +1508,13 @@
                       'imagus:userScriptError',
                       onErr
                     );
-                    document.removeEventListener('imagus:userScriptElement', onEl);
-                    try { el.removeAttribute('data-imagus-trigger'); } catch (_) {}
+                    document.removeEventListener(
+                      'imagus:userScriptElement',
+                      onEl
+                    );
+                    try {
+                      el.removeAttribute('data-imagus-trigger');
+                    } catch (_) {}
                     resolve('');
                   }, 3000);
                 });
@@ -1493,15 +1523,21 @@
                   if (/^https?:\/\//i.test(urlFromScript)) {
                     url = urlFromScript;
                     unresolvedPlaceholders = false;
-                    try { el.removeAttribute('data-imagus-trigger'); } catch (_) {}
+                    try {
+                      el.removeAttribute('data-imagus-trigger');
+                    } catch (_) {}
                   } else if (!urlFromScript.includes('{')) {
                     url = urlFromScript;
                     unresolvedPlaceholders = false;
-                    try { el.removeAttribute('data-imagus-trigger'); } catch (_) {}
+                    try {
+                      el.removeAttribute('data-imagus-trigger');
+                    } catch (_) {}
                   }
                 }
                 // Clean up attribute if script didn't yield usable URL
-                try { el.removeAttribute('data-imagus-trigger'); } catch (_) {}
+                try {
+                  el.removeAttribute('data-imagus-trigger');
+                } catch (_) {}
               }
 
               // Try API if still no usable URL and API provided
