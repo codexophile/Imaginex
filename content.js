@@ -533,11 +533,21 @@
         // If rule has API config, fetch from external API
         if (rule.api && rule.api.url) {
           try {
+            // Check if extension context is still valid before making message calls
+            if (!chrome?.runtime?.sendMessage) {
+              console.warn('Extension context invalidated, skipping API fetch');
+              continue;
+            }
+
             // Load settings to get API keys
-            const settingsData = await new Promise(resolve => {
-              chrome.storage.local.get([SETTINGS_INTERNAL_KEY], result => {
-                resolve(result[SETTINGS_INTERNAL_KEY] || {});
-              });
+            const settingsData = await new Promise((resolve, reject) => {
+              try {
+                chrome.storage.local.get([SETTINGS_INTERNAL_KEY], result => {
+                  resolve(result[SETTINGS_INTERNAL_KEY] || {});
+                });
+              } catch (err) {
+                reject(err);
+              }
             });
             const apiKeys = settingsData.apiKeys || {};
             // Substitute variables and settings in API URL and headers
@@ -588,6 +598,15 @@
               );
             }
           } catch (err) {
+            // Check if error is due to extension context invalidation
+            if (
+              err?.message?.includes('Extension context invalidated') ||
+              err?.message?.includes('sendMessage') ||
+              !chrome?.runtime?.sendMessage
+            ) {
+              console.warn('Extension context lost, skipping API fetch:', err);
+              continue;
+            }
             console.error('Error fetching from API:', err);
           }
         }
