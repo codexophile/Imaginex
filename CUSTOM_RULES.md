@@ -202,6 +202,110 @@ article img[src*="cdninstagram.com"]
 
 Instagram URL rewriting is usually site-specific; prefer extracting stable identifiers from attributes and composing the CDN URL via template.
 
+## API Configuration (Optional)
+
+For cases where high-quality images are only available through external APIs (like YouTube profile pictures, Twitter user avatars, etc), you can use API configuration instead of URL templates.
+
+### API Structure
+
+```json
+{
+  "url": "https://api.example.com?id={extractedVar}&key={settings.apiKeyName}",
+  "path": "data.image.url",
+  "headers": { "Authorization": "Bearer {settings.token}" }
+}
+```
+
+- **url** (required): API endpoint URL with placeholders
+- **path** (optional): JSON path to extract from response (e.g., `items[0].snippet.thumbnails.high.url`)
+- **headers** (optional): Custom headers object with optional placeholders
+
+### Placeholder Types
+
+1. **Extracted variables**: `{variableName}` - from Extract Rules
+2. **Settings keys**: `{settings.keyName}` - from API Keys section in Options
+
+### Example: YouTube Channel Profile Pictures
+
+YouTube channel profile pictures don't expose high-resolution sources in the DOM, but they're available via the YouTube Data API v3.
+
+**Step 1: Get a YouTube Data API Key**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing
+3. Enable "YouTube Data API v3"
+4. Create credentials → API Key
+5. Add the key in the extension's Options page → API Keys section:
+   - Name: `youtubeApiKey`
+   - Value: Your API key
+
+**Step 2: Create the Rule**
+
+- **Name**: YouTube Channel Avatars
+- **CSS Selector**: `img#avatar[src*="yt3.ggpht.com"]`
+- **Extract Rules** (CSS shorthand):
+  ```
+  channelId = qs("a#avatar-link@href") ~ "/channel/([^/]+)"
+  ```
+  Or (JSON):
+  ```json
+  [
+    {
+      "var": "channelId",
+      "regex": "/channel/([^/]+)",
+      "sources": [
+        {
+          "type": "cssQueryAttr",
+          "closest": "ytd-video-owner-renderer",
+          "selector": "a#avatar-link",
+          "name": "href"
+        }
+      ]
+    }
+  ]
+  ```
+- **API Configuration**:
+  ```json
+  {
+    "url": "https://www.googleapis.com/youtube/v3/channels?part=snippet&id={channelId}&key={settings.youtubeApiKey}",
+    "path": "items[0].snippet.thumbnails.high.url"
+  }
+  ```
+
+Now when you hover over channel avatars, the extension will:
+
+1. Extract the channel ID from the avatar link
+2. Call YouTube Data API with your key
+3. Extract the high-quality thumbnail URL from the response
+4. Display the enlarged image
+
+### API Features
+
+- **Caching**: API responses are cached for 5 minutes to reduce unnecessary requests
+- **Rate Limiting**: 10 requests per minute per domain to avoid hitting API limits
+- **Security**: API keys are stored locally and never leave your browser except in API calls you configure
+
+### Other API Examples
+
+**Twitter User Avatars** (if you have Twitter API access):
+
+```json
+{
+  "url": "https://api.twitter.com/2/users/by/username/{username}?user.fields=profile_image_url",
+  "path": "data.profile_image_url",
+  "headers": { "Authorization": "Bearer {settings.twitterBearerToken}" }
+}
+```
+
+**Generic REST API**:
+
+```json
+{
+  "url": "https://api.service.com/v1/images/{imageId}",
+  "path": "high_res_url"
+}
+```
+
 ## Tips and Best Practices
 
 1. **Test Your Selectors**: Use browser DevTools to test your CSS selectors before adding them to a rule.

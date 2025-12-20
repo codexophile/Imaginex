@@ -49,6 +49,12 @@ async function init() {
   els.cloudLoadBtn = $('cloudLoadBtn');
   els.cloudStatus = $('cloudStatus');
 
+  // API Keys elements
+  els.apiKeysList = $('apiKeysList');
+  els.apiKeyName = $('apiKeyName');
+  els.apiKeyValue = $('apiKeyValue');
+  els.addApiKeyBtn = $('addApiKeyBtn');
+
   // Custom rules elements
   els.customRulesList = $('customRulesList');
   els.addRuleBtn = $('addRuleBtn');
@@ -58,6 +64,7 @@ async function init() {
   els.ruleSelector = $('ruleSelector');
   els.ruleUrlTemplate = $('ruleUrlTemplate');
   els.ruleExtract = $('ruleExtract');
+  els.ruleApi = $('ruleApi');
   els.saveRuleBtn = $('saveRuleBtn');
   els.cancelRuleBtn = $('cancelRuleBtn');
   els.testRuleBtn = $('testRuleBtn');
@@ -68,6 +75,7 @@ async function init() {
   initial = s;
   bindValues(s);
   renderCustomRules(s.customRules || []);
+  renderApiKeys(s.apiKeys || {});
   applyTheme(s.theme);
   wireEvents();
   subscribe(onExternalChange);
@@ -147,6 +155,11 @@ function wireEvents() {
     els.testRuleBtn.addEventListener('click', handleTestRule);
   }
 
+  // API Keys event handlers
+  if (els.addApiKeyBtn) {
+    els.addApiKeyBtn.addEventListener('click', handleAddApiKey);
+  }
+
   if (els.cloudSaveBtn) {
     els.cloudSaveBtn.addEventListener('click', async () => {
       if (els.cloudSaveBtn.disabled) return;
@@ -214,6 +227,81 @@ function onExternalChange(newSettings) {
   if (changed && !dirty) {
     bindValues(initial);
   }
+}
+
+// API Keys Management
+function renderApiKeys(apiKeys) {
+  const container = els.apiKeysList;
+  if (!apiKeys || Object.keys(apiKeys).length === 0) {
+    container.innerHTML =
+      '<p style="opacity: 0.6; font-size: 13px;">No API keys stored. Add one below to use API-based rules.</p>';
+    return;
+  }
+
+  container.innerHTML = Object.entries(apiKeys)
+    .map(
+      ([name, value]) => `
+    <div class="rule-item" style="display:flex; justify-content:space-between; align-items:center; padding:10px;">
+      <div style="flex:1;">
+        <strong>${escapeHtml(name)}</strong>
+        <div style="opacity:.7; font-size:12px; font-family:monospace;">${escapeHtml(
+          value.slice(0, 12)
+        )}${'*'.repeat(Math.max(0, value.length - 12))}</div>
+      </div>
+      <button class="danger delete-api-key-btn" data-key-name="${escapeHtml(
+        name
+      )}">Delete</button>
+    </div>
+  `
+    )
+    .join('');
+
+  container.querySelectorAll('.delete-api-key-btn').forEach(btn => {
+    btn.addEventListener('click', handleDeleteApiKey);
+  });
+}
+
+async function handleAddApiKey() {
+  const name = els.apiKeyName.value.trim();
+  const value = els.apiKeyValue.value.trim();
+
+  if (!name || !value) {
+    alert('Both key name and value are required.');
+    return;
+  }
+
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+    alert(
+      'Key name must start with a letter and contain only letters, numbers, and underscores.'
+    );
+    return;
+  }
+
+  const apiKeys = { ...(initial.apiKeys || {}), [name]: value };
+  await updateSettings({ apiKeys });
+  initial = await loadSettings();
+  renderApiKeys(initial.apiKeys || {});
+  els.apiKeyName.value = '';
+  els.apiKeyValue.value = '';
+  els.status.textContent = 'API key added';
+  setTimeout(() => {
+    els.status.textContent = '';
+  }, 1500);
+}
+
+async function handleDeleteApiKey(e) {
+  const keyName = e.target.dataset.keyName;
+  if (!confirm(`Delete API key "${keyName}"?`)) return;
+
+  const apiKeys = { ...(initial.apiKeys || {}) };
+  delete apiKeys[keyName];
+  await updateSettings({ apiKeys });
+  initial = await loadSettings();
+  renderApiKeys(initial.apiKeys || {});
+  els.status.textContent = 'API key deleted';
+  setTimeout(() => {
+    els.status.textContent = '';
+  }, 1500);
 }
 
 // Custom Rules Management
@@ -293,6 +381,7 @@ function handleAddRule() {
   els.ruleSelector.value = '';
   els.ruleUrlTemplate.value = '';
   els.ruleExtract.value = '';
+  els.ruleApi.value = '';
   els.ruleForm.style.display = 'block';
   els.ruleName.focus();
 }
@@ -312,6 +401,11 @@ function handleEditRule(e) {
     els.ruleExtract.value = JSON.stringify(rule.extract, null, 2);
   } else {
     els.ruleExtract.value = '';
+  }
+  if (rule.api && typeof rule.api === 'object') {
+    els.ruleApi.value = JSON.stringify(rule.api, null, 2);
+  } else {
+    els.ruleApi.value = '';
   }
   els.ruleForm.style.display = 'block';
   els.ruleName.focus();
@@ -393,6 +487,28 @@ function parseExtractInput(text) {
           i + 1
         }. Use letters/numbers/underscore (e.g. url, videoId).`
       );
+    }
+
+    // Optional regex override via '~ <regex>' (quotes optional)
+    let regexString = '(.+)';
+    const tildeIdx = exprPart.lastIndexOf('~');
+    if (tildeIdx !== -1) {
+      const regexPart = exprPart.slice(tildeIdx + 1).trim();
+      exprPart = exprPart.slice(0, tildeIdx).trim();
+      if (!regexPart) {
+        throw new Error(`Missing regex after '~' on line ${i + 1}.`);
+      }
+      if (
+        (regexPart.startsWith('"') && regexPart.endsWith('"')) ||
+        (regexPart.startsWith("'") && regexPart.endsWith("'"))
+      ) {
+        regexString = regexPart.slice(1, -1);
+      } else {
+        regexString = regexPart;
+      }
+      if (!regexString) {
+        throw new Error(`Empty regex after '~' on line ${i + 1}.`);
+      }
     }
 
     // Support fallbacks via ||
@@ -477,7 +593,7 @@ function parseExtractInput(text) {
 
     steps.push({
       var: varName,
-      regex: '(.+)',
+      regex: regexString,
       mode,
       sources: exprs.map(x => {
         if (x.kind === 'xpath') return { type: 'xpath', expr: x.expr };
@@ -511,13 +627,44 @@ async function handleSaveRule() {
     return;
   }
 
+  const apiRaw = els.ruleApi.value.trim();
+  let api = null;
+  if (apiRaw) {
+    try {
+      api = JSON.parse(apiRaw);
+      if (api && typeof api === 'object') {
+        if (!api.url || typeof api.url !== 'string') {
+          alert('API configuration must include a "url" string property.');
+          return;
+        }
+        // Validate optional fields
+        if (api.path !== undefined && typeof api.path !== 'string') {
+          alert('API "path" must be a string if provided.');
+          return;
+        }
+        if (api.headers !== undefined && typeof api.headers !== 'object') {
+          alert('API "headers" must be an object if provided.');
+          return;
+        }
+      } else {
+        alert('API configuration must be a JSON object.');
+        return;
+      }
+    } catch (err) {
+      alert('Invalid JSON in API configuration: ' + err.message);
+      return;
+    }
+  }
+
   if (!name || !selector) {
     alert('Rule name and CSS selector are required.');
     return;
   }
 
-  if (!urlTemplate && (!extract || extract.length === 0)) {
-    alert('Either URL template or Extract Rules (JSON) is required.');
+  if (!urlTemplate && (!extract || extract.length === 0) && !api) {
+    alert(
+      'Either URL template, Extract Rules, or API configuration is required.'
+    );
     return;
   }
 
@@ -533,6 +680,7 @@ async function handleSaveRule() {
         selector,
         urlTemplate,
         extract,
+        api,
       };
       delete rules[index].customJS;
     }
@@ -545,6 +693,7 @@ async function handleSaveRule() {
       selector,
       urlTemplate,
       extract,
+      api,
     };
     rules.push(newRule);
   }

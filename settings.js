@@ -7,6 +7,7 @@ const SETTINGS_DEFAULTS = Object.freeze({
   zoom: 1.0, // Placeholder for potential scaling of enlarged image
   enablePrefetch: true, // Future optimization: prefetch high-res images on hover intent
   hoverDelay: 300, // Delay before showing enlarged image (ms)
+  apiKeys: {}, // User-defined API keys for rules that fetch from external APIs
   customRules: [
     // Custom rules for finding higher-quality images
     {

@@ -332,6 +332,22 @@
     </section>
 
     <section>
+      <h2>API Keys</h2>
+      <p style="margin-top:0; font-size:13px; opacity:.8;">
+        Store API keys for rules that fetch high-res images from external services (YouTube, Twitter, etc.).
+        Keys are stored locally and referenced in rules via <code>{settings.keyName}</code>.
+      </p>
+      <div id="apiKeysList" class="custom-rules-list">
+        <!-- Keys will be dynamically inserted here -->
+      </div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <input type="text" id="apiKeyName" placeholder="Key name (e.g., youtubeApiKey)" style="flex:1;" />
+        <input type="password" id="apiKeyValue" placeholder="API key value" style="flex:2;" />
+        <button id="addApiKeyBtn">Add Key</button>
+      </div>
+    </section>
+
+    <section>
       <h2>Custom Rules</h2>
       <p style="margin-top:0; font-size:13px; opacity:.8;">
         Define custom rules to find higher-quality images for specific elements.
@@ -381,6 +397,18 @@
             <code>qs("selector@attr")</code>, or <code>closest("closestSelector", "selector", "attr")</code>.
             Each step reads from one or more sources and applies a regex.
             The first capture group becomes the variable value.
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="ruleApi">API Configuration (JSON) (Optional)</label>
+          <textarea id="ruleApi" spellcheck="false"
+            placeholder='{\n  "url": "https://api.example.com?id={extractedVar}&key={settings.apiKeyName}",\n  "path": "data.image.url",\n  "headers": {"Authorization": "Bearer {settings.token}"}\n}'></textarea>
+          <div class="help-text">
+            For rules that fetch images from external APIs (YouTube profiles, Twitter, etc).
+            <code>url</code>: API endpoint with placeholders. <code>path</code>: JSON path to extract from response
+            (optional). <code>headers</code>: Custom headers (optional).
+            Use <code>{settings.keyName}</code> to reference API keys stored in the API Keys section.
           </div>
         </div>
 

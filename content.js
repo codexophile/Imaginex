@@ -202,6 +202,31 @@
   }
 
   // Custom rule matching and image URL extraction
+
+  function closestDeep(element, selector) {
+    if (!element || !selector) return null;
+    let node = element;
+    while (node) {
+      if (node.nodeType === 1 && node.matches?.(selector)) return node;
+
+      // Prefer DOM parent traversal
+      if (node.parentElement) {
+        node = node.parentElement;
+        continue;
+      }
+
+      // Cross ShadowRoot boundary via its host
+      const root = node.getRootNode?.();
+      if (root && root.host) {
+        node = root.host;
+        continue;
+      }
+
+      node = null;
+    }
+    return null;
+  }
+
   function getSourceValue(element, source) {
     if (!source || !source.type) return null;
     try {
@@ -217,7 +242,7 @@
           return (
             element.href ||
             element.getAttribute?.('href') ||
-            element.closest?.('a')?.href ||
+            closestDeep(element, 'a')?.href ||
             null
           );
         }
@@ -227,7 +252,7 @@
             : null;
         case 'closestAttr': {
           if (!source.selector || !source.name) return null;
-          const closest = element.closest?.(source.selector);
+          const closest = closestDeep(element, source.selector);
           if (!closest) return null;
           return (
             closest.getAttribute?.(source.name) || closest[source.name] || null
@@ -237,7 +262,7 @@
           // Find closest ancestor, then querySelector within it, then read attribute/property.
           // Useful for extracting from sibling structures like: <a ...></a> next to <picture>...</picture>
           if (!source.closest || !source.selector || !source.name) return null;
-          const root = element.closest?.(source.closest);
+          const root = closestDeep(element, source.closest);
           if (!root) return null;
           const target = root.querySelector?.(source.selector);
           if (!target) return null;
@@ -248,7 +273,10 @@
         case 'cssQueryAttr': {
           // Query within the matched element, then read attribute/property.
           if (!source.selector || !source.name) return null;
-          const target = element.querySelector?.(source.selector);
+          const root = source.closest
+            ? closestDeep(element, source.closest)
+            : element;
+          const target = root?.querySelector?.(source.selector);
           if (!target) return null;
           return (
             target.getAttribute?.(source.name) || target[source.name] || null
@@ -393,7 +421,7 @@
     return url;
   }
 
-  function checkCustomRules(element) {
+  async function checkCustomRules(element) {
     if (!customRules || customRules.length === 0) {
       return null;
     }
@@ -422,6 +450,69 @@
         }
 
         const variables = extractVariables(element, rule);
+
+        // If rule has API config, fetch from external API
+        if (rule.api && rule.api.url) {
+          try {
+            // Load settings to get API keys
+            const settingsData = await new Promise(resolve => {
+              chrome.storage.local.get([SETTINGS_INTERNAL_KEY], result => {
+                resolve(result[SETTINGS_INTERNAL_KEY] || {});
+              });
+            });
+            const apiKeys = settingsData.apiKeys || {};
+
+            // Substitute variables and settings in API URL and headers
+            const substituteVars = str => {
+              return String(str).replace(/\{([^}]+)\}/g, (m, key) => {
+                if (key.startsWith('settings.')) {
+                  const settingKey = key.slice(9);
+                  return apiKeys[settingKey] || m;
+                }
+                if (Object.prototype.hasOwnProperty.call(variables, key)) {
+                  return variables[key];
+                }
+                return m;
+              });
+            };
+
+            const apiUrl = substituteVars(rule.api.url);
+            if (apiUrl.includes('{')) {
+              console.warn('Unresolved placeholders in API URL:', apiUrl);
+              continue;
+            }
+
+            const headers = {};
+            if (rule.api.headers) {
+              for (const [k, v] of Object.entries(rule.api.headers)) {
+                headers[k] = substituteVars(v);
+              }
+            }
+
+            console.log('Fetching from API:', apiUrl);
+            const response = await chrome.runtime.sendMessage({
+              type: 'imagus:fetchApi',
+              url: apiUrl,
+              path: rule.api.path || null,
+              headers,
+            });
+
+            if (response && response.ok) {
+              const url = String(response.data);
+              if (url && !url.includes('{')) {
+                console.log('API returned URL:', url);
+                return url;
+              }
+            } else {
+              console.warn(
+                'API fetch failed:',
+                response?.error || 'Unknown error'
+              );
+            }
+          } catch (err) {
+            console.error('Error fetching from API:', err);
+          }
+        }
 
         if (rule.urlTemplate) {
           const url = applyTemplate(rule.urlTemplate, variables);
@@ -706,10 +797,10 @@
     }
 
     // Set timer to show enlarged image after delay
-    hoverTimer = setTimeout(() => {
+    hoverTimer = setTimeout(async () => {
       if (currentImg === img) {
         // First, check if any custom rules match this element
-        const customUrl = checkCustomRules(img);
+        const customUrl = await checkCustomRules(img);
 
         if (customUrl) {
           // Custom rule found, show image from custom URL
