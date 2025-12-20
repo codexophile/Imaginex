@@ -20,6 +20,7 @@
     }
     if (Array.isArray(raw.customRules)) {
       customRules = raw.customRules.filter(r => r && r.enabled);
+      console.log('Loaded custom rules:', customRules.length, customRules);
     }
   }
 
@@ -889,24 +890,25 @@
           return;
         }
 
-        // Handle anchor elements with image URLs
-        if (target.tagName === 'A') {
-          handleAnchorMouseEnter(event);
-          return;
-        }
-
-        // Check if any custom rule matches this element (for non-IMG elements)
+        // Check if any custom rule matches this element first (before generic handlers)
         if (customRules && customRules.length > 0) {
           for (const rule of customRules) {
             try {
               if (target.matches(rule.selector)) {
+                console.log('Custom rule matched:', rule.name, 'for element:', target);
                 handleCustomElementMouseEnter(event);
                 return;
               }
             } catch (e) {
-              // Invalid selector, ignore
+              console.warn('Invalid custom rule selector:', rule.selector, e);
             }
           }
+        }
+
+        // Handle anchor elements with image URLs (only if no custom rule matched)
+        if (target.tagName === 'A') {
+          handleAnchorMouseEnter(event);
+          return;
         }
 
         // Check if element has background-image CSS (built-in support)
