@@ -266,6 +266,68 @@
       align-items: center;
       gap: 6px;
     }
+
+    .options-container {
+      display: flex;
+      gap: 20px;
+    }
+
+    .sidebar {
+      width: 180px;
+      flex-shrink: 0;
+    }
+
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .sidebar li {
+      padding: 12px 14px;
+      background: #f0f0f0;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-weight: 500;
+    }
+
+    .sidebar li:hover {
+      background: #e0e0e0;
+    }
+
+    .sidebar li.active {
+      background: #4b6cb7;
+      color: white;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .sidebar li {
+        background: #2a2a2a;
+      }
+
+      .sidebar li:hover {
+        background: #3a3a3a;
+      }
+
+      .sidebar li.active {
+        background: #4b6cb7;
+      }
+    }
+
+    .content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .section-content {
+      display: none;
+    }
+
+    .section-content.active {
+      display: block;
+    }
   </style>
 </head>
 
@@ -274,180 +336,207 @@
     <h1>Imaginex Settings</h1>
   </header>
   <main>
-    <section>
-      <h2>Display</h2>
-      <div class="setting">
-        <label for="theme">Theme</label>
-        <select id="theme">
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-          <option value="system">System</option>
-        </select>
-        <span class="desc">Interface theme (currently affects options page only)</span>
+    <div class="options-container">
+      <div class="sidebar">
+        <ul>
+          <li id="display" class="sidebar-item active">Display</li>
+          <li id="shortcuts" class="sidebar-item">Shortcuts</li>
+          <li id="cloudSync" class="sidebar-item">Cloud Sync</li>
+          <li id="apiKeys" class="sidebar-item">API Keys</li>
+          <li id="customRules" class="sidebar-item">Custom Rules</li>
+        </ul>
       </div>
-      <div class="setting">
-        <label for="hoverDelay">Hover Delay (ms)</label>
-        <input id="hoverDelay" type="number" min="0" step="25" />
-        <span class="desc">Time to wait before enlarging</span>
-      </div>
-      <div class="setting">
-        <label for="zoom">Zoom Factor</label>
-        <input id="zoom" type="number" min="0.1" step="0.05" />
-        <span class="desc">Scaling factor for display override (future)</span>
-      </div>
-      <div class="setting">
-        <label for="enablePrefetch">Prefetch Larger Image</label>
-        <input id="enablePrefetch" type="checkbox" />
-        <span class="desc">Attempt to pre-load high-res image (future)</span>
-      </div>
-      <div class="setting">
-        <label for="enableAnimations">Enable Animations</label>
-        <input id="enableAnimations" type="checkbox" />
-        <span class="desc">Enable smooth transitions and animations when showing images</span>
-      </div>
-      <div class="row flex">
-        <button id="saveBtn" disabled>Saved</button>
-        <button id="resetBtn" class="secondary">Reset Defaults</button>
-        <span id="status"></span>
-      </div>
-    </section>
-
-    <section>
-      <h2>Shortcuts (Planned)</h2>
-      <p style="margin-top:0;">Keyboard shortcuts integration will be added. Planned defaults:</p>
-      <div class="shortcut-grid">
-        <div><code class="kbd">Esc</code></div>
-        <div>Close enlarged image</div>
-        <div><code class="kbd">Arrow Keys</code></div>
-        <div>Future: Navigate gallery</div>
-        <div><code class="kbd">Shift</code> + Hover</div>
-        <div>Future: Force enlarge even if small gain</div>
-      </div>
-    </section>
-
-    <section>
-      <h2>Cloud Sync</h2>
-      <div class="row flex">
-        <button id="cloudSaveBtn">Save to Cloud</button>
-        <button id="cloudLoadBtn">Load from Cloud</button>
-        <span id="cloudStatus"></span>
-      </div>
-      <p style="margin-top:0; font-size:13px; opacity:.7;">Manually save or load your settings to/from Google Drive.
-        Sign in with your Google account once. Settings are always stored locally; cloud sync is manual.</p>
-    </section>
-
-    <section>
-      <h2>API Keys</h2>
-      <p style="margin-top:0; font-size:13px; opacity:.8;">
-        Store API keys for rules that fetch high-res images from external services (YouTube, Twitter, etc.).
-        Keys are stored locally and referenced in rules via <code>{settings.keyName}</code>.
-      </p>
-      <div id="apiKeysList" class="custom-rules-list">
-        <!-- Keys will be dynamically inserted here -->
-      </div>
-      <div style="display:flex; gap:8px; margin-top:10px;">
-        <input type="text" id="apiKeyName" placeholder="Key name (e.g., youtubeApiKey)" style="flex:1;" />
-        <input type="password" id="apiKeyValue" placeholder="API key value" style="flex:2;" />
-        <button id="addApiKeyBtn">Add Key</button>
-      </div>
-    </section>
-
-    <section>
-      <h2>Custom Rules</h2>
-      <p style="margin-top:0; font-size:13px; opacity:.8;">
-        Define custom rules to find higher-quality images for specific elements.
-        For example, find maxresdefault thumbnails for YouTube videos or high-res product images.
-      </p>
-
-      <div class="custom-rules-list" id="customRulesList">
-        <!-- Rules will be dynamically inserted here -->
-      </div>
-
-      <button id="addRuleBtn">Add New Rule</button>
-
-      <div id="ruleForm" class="rule-form" style="display: none;">
-        <h3 style="margin-top: 0; font-size: 15px;">
-          <span id="formTitle">New Rule</span>
-        </h3>
-
-        <div class="form-group">
-          <label for="ruleName">Rule Name</label>
-          <input type="text" id="ruleName" placeholder="e.g., YouTube Thumbnails" />
-          <div class="help-text">A descriptive name for this rule</div>
+      <div class="content">
+        <div id="section-display" class="section-content active">
+          <section>
+            <h2>Display</h2>
+            <div class="setting">
+              <label for="theme">Theme</label>
+              <select id="theme">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">System</option>
+              </select>
+              <span class="desc">Interface theme (currently affects options page only)</span>
+            </div>
+            <div class="setting">
+              <label for="hoverDelay">Hover Delay (ms)</label>
+              <input id="hoverDelay" type="number" min="0" step="25" />
+              <span class="desc">Time to wait before enlarging</span>
+            </div>
+            <div class="setting">
+              <label for="zoom">Zoom Factor</label>
+              <input id="zoom" type="number" min="0.1" step="0.05" />
+              <span class="desc">Scaling factor for display override (future)</span>
+            </div>
+            <div class="setting">
+              <label for="enablePrefetch">Prefetch Larger Image</label>
+              <input id="enablePrefetch" type="checkbox" />
+              <span class="desc">Attempt to pre-load high-res image (future)</span>
+            </div>
+            <div class="setting">
+              <label for="enableAnimations">Enable Animations</label>
+              <input id="enableAnimations" type="checkbox" />
+              <span class="desc">Enable smooth transitions and animations when showing images</span>
+            </div>
+            <div class="row flex">
+              <button id="saveBtn" disabled>Saved</button>
+              <button id="resetBtn" class="secondary">Reset Defaults</button>
+              <span id="status"></span>
+            </div>
+          </section>
         </div>
 
-        <div class="form-group">
-          <label for="ruleSelector">CSS Selector</label>
-          <input type="text" id="ruleSelector" placeholder="e.g., a#thumbnail img[src*='ytimg.com']" />
-          <div class="help-text">CSS selector to match elements (e.g., img, a, div)</div>
+        <div id="section-shortcuts" class="section-content">
+          <section>
+            <h2>Shortcuts (Planned)</h2>
+            <p style="margin-top:0;">Keyboard shortcuts integration will be added. Planned defaults:</p>
+            <div class="shortcut-grid">
+              <div><code class="kbd">Esc</code></div>
+              <div>Close enlarged image</div>
+              <div><code class="kbd">Arrow Keys</code></div>
+              <div>Future: Navigate gallery</div>
+              <div><code class="kbd">Shift</code> + Hover</div>
+              <div>Future: Force enlarge even if small gain</div>
+            </div>
+          </section>
         </div>
 
-        <div class="form-group">
-          <label for="ruleUrlTemplate">URL Template</label>
-          <input type="text" id="ruleUrlTemplate" placeholder="e.g., https://example.com/{id}/image.jpg" />
-          <div class="help-text">
-            URL template with placeholders like {videoId}, {id}, {src}, {href}.
-            To return a full URL, set this to <code>{url}</code> and extract a <code>url</code> variable.
-          </div>
+        <div id="section-cloudSync" class="section-content">
+          <section>
+            <h2>Cloud Sync</h2>
+            <div class="row flex">
+              <button id="cloudSaveBtn">Save to Cloud</button>
+              <button id="cloudLoadBtn">Load from Cloud</button>
+              <span id="cloudStatus"></span>
+            </div>
+            <p style="margin-top:0; font-size:13px; opacity:.7;">Manually save or load your settings to/from Google
+              Drive.
+              Sign in with your Google account once. Settings are always stored locally; cloud sync is manual.</p>
+          </section>
         </div>
 
-        <div class="form-group">
-          <label for="ruleExtract">Extract Rules (JSON or XPath shorthand) (Optional)</label>
-          <textarea id="ruleExtract" spellcheck="false"
-            placeholder='// JSON example\n[\n  {\n    "var": "videoId",\n    "regex": "\\/vi(?:_webp)?\\/([^\\/]+)",\n    "sources": [{"type":"src"},{"type":"href"}]\n  }\n]\n\n# XPath shorthand example (one per line)\nurl = xpath("ancestor::div[contains(@class,\"relative\")][1]//picture/source[@type=\"image/webp\"]/@data-srcset") | srcsetBest\nurl = xpath("ancestor::div[contains(@class,\"relative\")][1]//picture/img/@src")'></textarea>
-          <div class="help-text">
-            Manifest V3 blocks running user-provided JavaScript (<code>unsafe-eval</code>), so rules use CSP-safe
-            extractors.
-            Provide either a JSON array of extract steps, or shorthand (one per line): XPath,
-            <code>qs("selector@attr")</code>, or <code>closest("closestSelector", "selector", "attr")</code>.
-            Each step reads from one or more sources and applies a regex.
-            The first capture group becomes the variable value.
-          </div>
+        <div id="section-apiKeys" class="section-content">
+          <section>
+            <h2>API Keys</h2>
+            <p style="margin-top:0; font-size:13px; opacity:.8;">
+              Store API keys for rules that fetch high-res images from external services (YouTube, Twitter, etc.).
+              Keys are stored locally and referenced in rules via <code>{settings.keyName}</code>.
+            </p>
+            <div id="apiKeysList" class="custom-rules-list">
+              <!-- Keys will be dynamically inserted here -->
+            </div>
+            <div style="display:flex; gap:8px; margin-top:10px;">
+              <input type="text" id="apiKeyName" placeholder="Key name (e.g., youtubeApiKey)" style="flex:1;" />
+              <input type="password" id="apiKeyValue" placeholder="API key value" style="flex:2;" />
+              <button id="addApiKeyBtn">Add Key</button>
+            </div>
+          </section>
         </div>
 
-        <div class="form-group">
-          <label for="ruleApi">API Configuration (JSON) (Optional)</label>
-          <textarea id="ruleApi" spellcheck="false"
-            placeholder='{\n  "url": "https://api.example.com?id={extractedVar}&key={settings.apiKeyName}",\n  "path": "data.image.url",\n  "headers": {"Authorization": "Bearer {settings.token}"}\n}'></textarea>
-          <div class="help-text">
-            For rules that fetch images from external APIs (YouTube profiles, Twitter, etc).
-            <code>url</code>: API endpoint with placeholders. <code>path</code>: JSON path to extract from response
-            (optional). <code>headers</code>: Custom headers (optional).
-            Use <code>{settings.keyName}</code> to reference API keys stored in the API Keys section.
-          </div>
+        <div id="section-customRules" class="section-content">
+          <section>
+            <h2>Custom Rules</h2>
+            <p style="margin-top:0; font-size:13px; opacity:.8;">
+              Define custom rules to find higher-quality images for specific elements.
+              For example, find maxresdefault thumbnails for YouTube videos or high-res product images.
+            </p>
+
+            <div class="custom-rules-list" id="customRulesList">
+              <!-- Rules will be dynamically inserted here -->
+            </div>
+
+            <button id="addRuleBtn">Add New Rule</button>
+
+            <div id="ruleForm" class="rule-form" style="display: none;">
+              <h3 style="margin-top: 0; font-size: 15px;">
+                <span id="formTitle">New Rule</span>
+              </h3>
+
+              <div class="form-group">
+                <label for="ruleName">Rule Name</label>
+                <input type="text" id="ruleName" placeholder="e.g., YouTube Thumbnails" />
+                <div class="help-text">A descriptive name for this rule</div>
+              </div>
+
+              <div class="form-group">
+                <label for="ruleSelector">CSS Selector</label>
+                <input type="text" id="ruleSelector" placeholder="e.g., a#thumbnail img[src*='ytimg.com']" />
+                <div class="help-text">CSS selector to match elements (e.g., img, a, div)</div>
+              </div>
+
+              <div class="form-group">
+                <label for="ruleUrlTemplate">URL Template</label>
+                <input type="text" id="ruleUrlTemplate" placeholder="e.g., https://example.com/{id}/image.jpg" />
+                <div class="help-text">
+                  URL template with placeholders like {videoId}, {id}, {src}, {href}.
+                  To return a full URL, set this to <code>{url}</code> and extract a <code>url</code> variable.
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="ruleExtract">Extract Rules (JSON or XPath shorthand) (Optional)</label>
+                <textarea id="ruleExtract" spellcheck="false"
+                  placeholder='// JSON example\n[\n  {\n    "var": "videoId",\n    "regex": "\\/vi(?:_webp)?\\/([^\\/]+)",\n    "sources": [{"type":"src"},{"type":"href"}]\n  }\n]\n\n# XPath shorthand example (one per line)\nurl = xpath("ancestor::div[contains(@class,\"relative\")][1]//picture/source[@type=\"image/webp\"]/@data-srcset") | srcsetBest\nurl = xpath("ancestor::div[contains(@class,\"relative\")][1]//picture/img/@src")'></textarea>
+                <div class="help-text">
+                  Manifest V3 blocks running user-provided JavaScript (<code>unsafe-eval</code>), so rules use CSP-safe
+                  extractors.
+                  Provide either a JSON array of extract steps, or shorthand (one per line): XPath,
+                  <code>qs("selector@attr")</code>, or <code>closest("closestSelector", "selector", "attr")</code>.
+                  Each step reads from one or more sources and applies a regex.
+                  The first capture group becomes the variable value.
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="ruleApi">API Configuration (JSON) (Optional)</label>
+                <textarea id="ruleApi" spellcheck="false"
+                  placeholder='{\n  "url": "https://api.example.com?id={extractedVar}&key={settings.apiKeyName}",\n  "path": "data.image.url",\n  "headers": {"Authorization": "Bearer {settings.token}"}\n}'></textarea>
+                <div class="help-text">
+                  For rules that fetch images from external APIs (YouTube profiles, Twitter, etc).
+                  <code>url</code>: API endpoint with placeholders. <code>path</code>: JSON path to extract from
+                  response
+                  (optional). <code>headers</code>: Custom headers (optional).
+                  Use <code>{settings.keyName}</code> to reference API keys stored in the API Keys section.
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="ruleUserScript">Custom JavaScript (Advanced) (Optional)</label>
+                <textarea id="ruleUserScript" spellcheck="false"
+                  placeholder='// Example:\n// returnURL("https://example.com/highres.jpg");\n// Access DOM directly or use ctx variables.'></textarea>
+                <div class="help-text">
+                  Executes user-provided JavaScript in a safe user script world after a match. Provide a final image URL
+                  by
+                  calling
+                  <code>returnURL(url)</code>. The script runs on the page and can read DOM. Context variables are
+                  available
+                  in
+                  <code>ctx</code>, including <code>selector</code>, <code>src</code>, <code>href</code>, and any
+                  extracted variables.
+                  Requires the <code>userScripts</code> permission; Chrome may prompt once.
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button id="testRuleBtn" class="secondary">Test on Current Tab</button>
+                <button id="saveRuleBtn">Save Rule</button>
+                <button id="cancelRuleBtn" class="secondary">Cancel</button>
+              </div>
+
+              <div id="ruleTestResults" class="rule-item" style="display:none;">
+                <div class="rule-header">
+                  <div class="rule-name">Test Results</div>
+                </div>
+                <div class="rule-details" id="ruleTestDetails"></div>
+              </div>
+            </div>
+          </section>
         </div>
 
-        <div class="form-group">
-          <label for="ruleUserScript">Custom JavaScript (Advanced) (Optional)</label>
-          <textarea id="ruleUserScript" spellcheck="false"
-            placeholder='// Example:\n// returnURL("https://example.com/highres.jpg");\n// Access DOM directly or use ctx variables.'></textarea>
-          <div class="help-text">
-            Executes user-provided JavaScript in a safe user script world after a match. Provide a final image URL by
-            calling
-            <code>returnURL(url)</code>. The script runs on the page and can read DOM. Context variables are available
-            in
-            <code>ctx</code>, including <code>selector</code>, <code>src</code>, <code>href</code>, and any
-            extracted variables.
-            Requires the <code>userScripts</code> permission; Chrome may prompt once.
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <button id="testRuleBtn" class="secondary">Test on Current Tab</button>
-          <button id="saveRuleBtn">Save Rule</button>
-          <button id="cancelRuleBtn" class="secondary">Cancel</button>
-        </div>
-
-        <div id="ruleTestResults" class="rule-item" style="display:none;">
-          <div class="rule-header">
-            <div class="rule-name">Test Results</div>
-          </div>
-          <div class="rule-details" id="ruleTestDetails"></div>
-        </div>
+        <div class="footer-note">Imaginex v1.0.0 &mdash; Settings stored locally. Google Drive sync available.</div>
       </div>
-    </section>
-
-    <div class="footer-note">Imaginex v1.0.0 &mdash; Settings stored locally. Google Drive sync available.</div>
+    </div>
   </main>
   <script type="module" src="options.js"></script>
 </body>

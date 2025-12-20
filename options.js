@@ -202,6 +202,32 @@ function wireEvents() {
       }, 2000);
     });
   }
+
+  document.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', event => {
+      // Remove active class from all items
+      document.querySelectorAll('.sidebar-item').forEach(li => {
+        li.classList.remove('active');
+      });
+
+      // Add active class to clicked item
+      event.target.classList.add('active');
+
+      // Get the section ID
+      const sectionId = 'section-' + event.target.id;
+
+      // Hide all sections
+      document.querySelectorAll('.section-content').forEach(section => {
+        section.classList.remove('active');
+      });
+
+      // Show selected section
+      const selectedSection = document.getElementById(sectionId);
+      if (selectedSection) {
+        selectedSection.classList.add('active');
+      }
+    });
+  });
 }
 
 async function resetDefaults() {
