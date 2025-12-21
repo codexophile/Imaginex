@@ -3,6 +3,7 @@
 
   let hoverOverlay = null;
   let currentImg = null;
+  let currentTrigger = null;
   let hoverTimer = null;
   let noPopupTooltip = null;
   let HOVER_DELAY = 300; // default; will be overridden by settings
@@ -405,6 +406,21 @@
     } catch (_) {
       return null;
     }
+  }
+
+  // Detect patterns where a non-image element sits alongside the real image (e.g., IMDb overlays)
+  function findSiblingImageCandidate(trigger) {
+    if (!trigger || !trigger.parentElement) return null;
+    const siblings = Array.from(trigger.parentElement.children).filter(
+      node => node !== trigger
+    );
+
+    for (const sib of siblings) {
+      const img = sib.querySelector?.('img');
+      if (img) return img;
+    }
+
+    return null;
   }
 
   function extractVariables(element, rule) {
@@ -977,10 +993,60 @@
       hideNoPopupIndicator(currentImg);
     }
     currentImg = null;
+    currentTrigger = null;
     if (hoverTimer) {
       clearTimeout(hoverTimer);
       hoverTimer = null;
     }
+  }
+
+  // Handle hover when the trigger is a sibling overlay and the real image lives next door
+  function handleSiblingImagePatternMouseEnter(event, siblingImg) {
+    const trigger = event.target;
+
+    if (!siblingImg || trigger === currentTrigger) {
+      return;
+    }
+
+    currentImg = siblingImg;
+    currentTrigger = trigger;
+
+    if (hoverTimer) {
+      clearTimeout(hoverTimer);
+    }
+
+    hoverTimer = setTimeout(async () => {
+      if (currentImg === siblingImg && currentTrigger === trigger) {
+        const customUrl = await checkCustomRules(siblingImg);
+
+        if (customUrl) {
+          showEnlargedImage(
+            siblingImg,
+            event.clientX,
+            event.clientY,
+            customUrl
+          );
+          return;
+        }
+
+        // If the sibling image is wrapped by a link pointing to an image, prefer that URL
+        const parentAnchor = siblingImg.closest('a');
+        const href = parentAnchor?.href || null;
+        if (href && isImageURL(href)) {
+          const bestFromImg = getBestImageSource(siblingImg);
+          if (href !== bestFromImg) {
+            showEnlargedImage(siblingImg, event.clientX, event.clientY, href);
+            return;
+          }
+        }
+
+        if (isImageScaledDown(siblingImg)) {
+          showEnlargedImage(siblingImg, event.clientX, event.clientY);
+        } else {
+          showNoPopupIndicator(siblingImg);
+        }
+      }
+    }, HOVER_DELAY);
   }
 
   // Handle mouse enter on images
@@ -993,6 +1059,7 @@
     }
 
     currentImg = img;
+    currentTrigger = img;
 
     // Clear any existing timer
     if (hoverTimer) {
@@ -1088,6 +1155,13 @@
           }
         }
 
+        // IMDb-style pattern: overlay sibling triggers should delegate to the nearby image
+        const siblingImage = findSiblingImageCandidate(target);
+        if (siblingImage) {
+          handleSiblingImagePatternMouseEnter(event, siblingImage);
+          return;
+        }
+
         // Handle anchor elements with image URLs (only if no custom rule matched)
         if (target.tagName === 'A') {
           handleAnchorMouseEnter(event);
@@ -1112,6 +1186,7 @@
         } else if (
           event.target.tagName === 'A' ||
           event.target === currentImg ||
+          event.target === currentTrigger ||
           getBackgroundImageUrl(event.target)
         ) {
           // Handle anchor, custom element, or background-image mouse leave
@@ -1124,7 +1199,16 @@
     document.addEventListener(
       'mousemove',
       function (event) {
-        if (event.target.tagName === 'IMG' && event.target === currentImg) {
+        const isActiveTrigger =
+          event.target === currentImg || event.target === currentTrigger;
+        if (hoverOverlay && hoverOverlay.style.display === 'block') {
+          if (isActiveTrigger) {
+            positionOverlay(hoverOverlay, event.clientX, event.clientY);
+          }
+        } else if (
+          event.target.tagName === 'IMG' &&
+          event.target === currentImg
+        ) {
           handleImageMouseMove(event);
         }
       },
@@ -1202,6 +1286,7 @@
     }
 
     currentImg = anchor;
+    currentTrigger = anchor;
 
     // Clear any existing timer
     if (hoverTimer) {
@@ -1257,6 +1342,8 @@
     }
 
     currentImg = element;
+    currentTrigger = element;
+    currentTrigger = element;
 
     // Clear any existing timer
     if (hoverTimer) {
