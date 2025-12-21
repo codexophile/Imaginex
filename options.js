@@ -6,12 +6,31 @@ import {
   getCurrentUser,
 } from './cloudSync.js';
 
+const SHORTCUT_FUNCTIONS = [
+  {
+    id: 'zoomFullResolution',
+    name: 'Zoom to full resolution',
+    description: 'Expand the hovered media to its original resolution.',
+  },
+];
+
+const MOUSE_BUTTON_LABELS = {
+  0: 'MouseLeft',
+  1: 'MouseMiddle',
+  2: 'MouseRight',
+  3: 'MouseBack',
+  4: 'MouseForward',
+};
+
+const MODIFIER_ORDER = ['Ctrl', 'Alt', 'Shift', 'Meta'];
+
 const els = {};
 let initial = null;
 let dirty = false;
 let saveTimer = null;
 const AUTO_SAVE_DEBOUNCE = 400;
 let editingRuleId = null;
+let activeCapture = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -37,12 +56,264 @@ function applyTheme(theme) {
   }
 }
 
+function normalizeBinding(binding) {
+  if (!binding || typeof binding !== 'object') return null;
+  const type = binding.type === 'mouse' ? 'mouse' : 'keyboard';
+  const combo = typeof binding.combo === 'string' && binding.combo.trim();
+  if (!combo) return null;
+  return { type, combo };
+}
+
+function normalizeShortcutState(raw) {
+  const state = {};
+  SHORTCUT_FUNCTIONS.forEach(fn => {
+    state[fn.id] = [null, null];
+  });
+  if (raw && typeof raw === 'object') {
+    for (const [key, value] of Object.entries(raw)) {
+      if (Array.isArray(value)) {
+        state[key] = [
+          normalizeBinding(value[0]) || null,
+          normalizeBinding(value[1]) || null,
+        ];
+      }
+    }
+  }
+  return state;
+}
+
+function formatShortcut(binding) {
+  if (!binding) return 'Not set';
+  return `${binding.type === 'mouse' ? 'Mouse' : 'Key'}: ${binding.combo}`;
+}
+
+function renderShortcuts(shortcuts) {
+  if (!els.shortcutsList) return;
+  const normalized = normalizeShortcutState(shortcuts);
+  els.shortcutsList.innerHTML = SHORTCUT_FUNCTIONS.map(fn => {
+    const slots = normalized[fn.id] || [null, null];
+    const slotHtml = slots
+      .map((binding, index) => {
+        const hasValue = !!binding;
+        return `
+          <div class="shortcut-slot" data-func-id="${
+            fn.id
+          }" data-slot-index="${index}">
+            <button class="secondary capture-shortcut" data-func-id="${
+              fn.id
+            }" data-slot-index="${index}">Set</button>
+            <span class="shortcut-value" data-shortcut-value="${
+              fn.id
+            }-${index}">${formatShortcut(binding)}</span>
+            <button class="secondary clear-shortcut" data-func-id="${
+              fn.id
+            }" data-slot-index="${index}" ${
+          hasValue ? '' : 'disabled'
+        }>Clear</button>
+          </div>
+        `;
+      })
+      .join('');
+
+    return `
+      <div class="shortcut-item" data-func-id="${fn.id}">
+        <div class="shortcut-heading">
+          <div class="shortcut-title">${escapeHtml(fn.name)}</div>
+          <div class="shortcut-desc">${escapeHtml(fn.description)}</div>
+        </div>
+        <div class="shortcut-slots">${slotHtml}</div>
+      </div>
+    `;
+  }).join('');
+
+  wireShortcutButtons();
+}
+
+function wireShortcutButtons() {
+  if (!els.shortcutsList) return;
+  els.shortcutsList.querySelectorAll('.capture-shortcut').forEach(btn => {
+    btn.addEventListener('click', handleStartShortcutCapture);
+  });
+  els.shortcutsList.querySelectorAll('.clear-shortcut').forEach(btn => {
+    btn.addEventListener('click', handleClearShortcut);
+  });
+}
+
+function handleStartShortcutCapture(e) {
+  const funcId = e.currentTarget.dataset.funcId;
+  const slotIndex = Number(e.currentTarget.dataset.slotIndex || 0);
+  beginShortcutCapture(funcId, slotIndex);
+}
+
+function beginShortcutCapture(funcId, slotIndex) {
+  stopShortcutCapture();
+  activeCapture = { funcId, slotIndex };
+  setCaptureStatus('Press keys or mouse...', true);
+}
+
+function stopShortcutCapture(message) {
+  if (!activeCapture) return;
+  const { funcId, slotIndex } = activeCapture;
+  const current = normalizeShortcutState(initial?.shortcuts || {})[funcId]?.[
+    slotIndex
+  ];
+  const label = message || formatShortcut(current);
+  const el = document.querySelector(
+    `[data-shortcut-value="${funcId}-${slotIndex}"]`
+  );
+  if (el) {
+    el.classList.remove('active');
+    el.textContent = label;
+  }
+  activeCapture = null;
+}
+
+function setCaptureStatus(text, isActive = false) {
+  if (!activeCapture) return;
+  const { funcId, slotIndex } = activeCapture;
+  const el = document.querySelector(
+    `[data-shortcut-value="${funcId}-${slotIndex}"]`
+  );
+  if (el) {
+    if (isActive) el.classList.add('active');
+    el.textContent = text;
+  }
+}
+
+async function handleClearShortcut(e) {
+  const funcId = e.currentTarget.dataset.funcId;
+  const slotIndex = Number(e.currentTarget.dataset.slotIndex || 0);
+  const shortcuts = normalizeShortcutState(initial?.shortcuts || {});
+  if (!shortcuts[funcId]) shortcuts[funcId] = [null, null];
+  shortcuts[funcId][slotIndex] = null;
+  await updateSettings({ shortcuts });
+  initial = await loadSettings();
+  renderShortcuts(initial.shortcuts || {});
+  if (els.status) {
+    els.status.textContent = 'Shortcut cleared';
+    setTimeout(() => (els.status.textContent = ''), 1200);
+  }
+}
+
+function normalizeKeyName(key) {
+  if (!key) return null;
+  if (key.length === 1) return key.toUpperCase();
+  if (key === ' ') return 'Space';
+  const map = {
+    Escape: 'Esc',
+    Esc: 'Esc',
+    ArrowUp: 'ArrowUp',
+    ArrowDown: 'ArrowDown',
+    ArrowLeft: 'ArrowLeft',
+    ArrowRight: 'ArrowRight',
+    Enter: 'Enter',
+    Tab: 'Tab',
+    Backspace: 'Backspace',
+    Delete: 'Delete',
+    Home: 'Home',
+    End: 'End',
+    PageUp: 'PageUp',
+    PageDown: 'PageDown',
+  };
+  return map[key] || key;
+}
+
+function normalizeKeyboardShortcut(e) {
+  const parts = [];
+  if (e.ctrlKey) parts.push('Ctrl');
+  if (e.altKey) parts.push('Alt');
+  if (e.shiftKey) parts.push('Shift');
+  if (e.metaKey) parts.push('Meta');
+  const keyName = normalizeKeyName(e.key);
+  if (!keyName) return null;
+  if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key) && parts.length === 0)
+    return null;
+  if (!['Ctrl', 'Alt', 'Shift', 'Meta'].includes(keyName)) {
+    parts.push(keyName);
+  } else if (parts.length === 0) {
+    return null;
+  }
+  const ordered = MODIFIER_ORDER.filter(m => parts.includes(m));
+  const nonMods = parts.filter(p => !MODIFIER_ORDER.includes(p));
+  const combo = [...ordered, ...nonMods].join('+');
+  return { type: 'keyboard', combo };
+}
+
+function normalizeMouseShortcut(e) {
+  if (e.type === 'wheel') {
+    const dir = e.deltaY < 0 ? 'WheelUp' : 'WheelDown';
+    return { type: 'mouse', combo: dir };
+  }
+  const label = MOUSE_BUTTON_LABELS[e.button];
+  if (!label) return null;
+  return { type: 'mouse', combo: label };
+}
+
+function handleCaptureKey(e) {
+  if (!activeCapture) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const isEscapeOnly =
+    e.key === 'Escape' && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey;
+  if (isEscapeOnly) {
+    stopShortcutCapture('Cancelled');
+    return;
+  }
+  const binding = normalizeKeyboardShortcut(e);
+  if (!binding) {
+    setCaptureStatus('Press a non-modifier key', true);
+    return;
+  }
+  commitCapturedShortcut(binding);
+}
+
+function handleCaptureMouse(e) {
+  if (!activeCapture) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const binding = normalizeMouseShortcut(e);
+  if (!binding) {
+    setCaptureStatus('Unsupported mouse input', true);
+    return;
+  }
+  commitCapturedShortcut(binding);
+}
+
+function handleCaptureWheel(e) {
+  if (!activeCapture) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const binding = normalizeMouseShortcut(e);
+  if (binding) commitCapturedShortcut(binding);
+}
+
+async function commitCapturedShortcut(binding) {
+  if (!activeCapture) return;
+  const { funcId, slotIndex } = activeCapture;
+  activeCapture = null;
+  await saveShortcut(funcId, slotIndex, binding);
+}
+
+async function saveShortcut(funcId, slotIndex, binding) {
+  const shortcuts = normalizeShortcutState(initial?.shortcuts || {});
+  if (!shortcuts[funcId]) shortcuts[funcId] = [null, null];
+  shortcuts[funcId][slotIndex] = binding;
+  await updateSettings({ shortcuts });
+  initial = await loadSettings();
+  renderShortcuts(initial.shortcuts || {});
+  if (els.status) {
+    els.status.textContent = 'Shortcut saved';
+    setTimeout(() => (els.status.textContent = ''), 1200);
+  }
+}
+
 async function init() {
   els.theme = $('theme');
   els.hoverDelay = $('hoverDelay');
   els.zoom = $('zoom');
   els.enablePrefetch = $('enablePrefetch');
   els.enableAnimations = $('enableAnimations');
+  els.shortcutsList = $('shortcutsList');
   els.saveBtn = $('saveBtn');
   els.resetBtn = $('resetBtn');
   els.status = $('status');
@@ -103,6 +374,7 @@ function bindValues(s) {
   els.zoom.value = s.zoom;
   els.enablePrefetch.checked = !!s.enablePrefetch;
   els.enableAnimations.checked = !!s.enableAnimations;
+  renderShortcuts(s.shortcuts || {});
   setDirty(false);
 }
 
@@ -255,11 +527,23 @@ function onExternalChange(newSettings) {
   // Merge external changes if different from our initial
   if (!initial) return;
   let changed = false;
-  for (const k of ['theme', 'hoverDelay', 'zoom', 'enablePrefetch']) {
+  for (const k of [
+    'theme',
+    'hoverDelay',
+    'zoom',
+    'enablePrefetch',
+    'enableAnimations',
+  ]) {
     if (newSettings[k] !== initial[k]) {
       initial[k] = newSettings[k];
       changed = true;
     }
+  }
+  const latestShortcuts = normalizeShortcutState(newSettings.shortcuts);
+  const currentShortcuts = normalizeShortcutState(initial.shortcuts);
+  if (JSON.stringify(latestShortcuts) !== JSON.stringify(currentShortcuts)) {
+    initial.shortcuts = latestShortcuts;
+    changed = true;
   }
   if (changed && !dirty) {
     bindValues(initial);
@@ -1022,6 +1306,14 @@ async function handleToggleRule(e) {
     }, 1000);
   }
 }
+
+window.addEventListener('keydown', handleCaptureKey, true);
+window.addEventListener('mousedown', handleCaptureMouse, true);
+window.addEventListener('auxclick', handleCaptureMouse, true);
+window.addEventListener('wheel', handleCaptureWheel, {
+  capture: true,
+  passive: false,
+});
 
 init().catch(err => {
   console.error('Failed to init options', err);

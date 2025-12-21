@@ -104,6 +104,81 @@
       font-size: 13px;
     }
 
+    .shortcuts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .shortcut-item {
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 8px;
+      padding: 12px 14px;
+      background: rgba(0, 0, 0, 0.02);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .shortcut-item {
+        border-color: rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.03);
+      }
+    }
+
+    .shortcut-heading {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .shortcut-title {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .shortcut-desc {
+      font-size: 12px;
+      opacity: 0.75;
+      line-height: 1.4;
+    }
+
+    .shortcut-slots {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .shortcut-slot {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .shortcut-value {
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.06);
+      min-width: 120px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .shortcut-value {
+        background: rgba(255, 255, 255, 0.08);
+      }
+    }
+
+    .shortcut-value.active {
+      border: 1px dashed rgba(75, 108, 183, 0.7);
+      background: rgba(75, 108, 183, 0.08);
+    }
+
+    .shortcut-hint {
+      font-size: 11px;
+      opacity: 0.65;
+    }
+
     code.kbd {
       background: #222;
       color: #eee;
@@ -390,16 +465,12 @@
 
         <div id="section-shortcuts" class="section-content">
           <section>
-            <h2>Shortcuts (Planned)</h2>
-            <p style="margin-top:0;">Keyboard shortcuts integration will be added. Planned defaults:</p>
-            <div class="shortcut-grid">
-              <div><code class="kbd">Esc</code></div>
-              <div>Close enlarged image</div>
-              <div><code class="kbd">Arrow Keys</code></div>
-              <div>Future: Navigate gallery</div>
-              <div><code class="kbd">Shift</code> + Hover</div>
-              <div>Future: Force enlarge even if small gain</div>
-            </div>
+            <h2>Shortcuts</h2>
+            <p style="margin-top:0; font-size:13px; opacity:.85;">Assign up to two shortcuts per action. Works with
+              keyboard or mouse inputs.</p>
+            <div id="shortcutsList" class="shortcuts-list"></div>
+            <p class="shortcut-hint">Tips: press Escape to cancel capture. Scroll to use wheel shortcuts. Mouse buttons
+              include left, middle, right, back, and forward.</p>
           </section>
         </div>
 

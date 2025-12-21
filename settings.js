@@ -1,6 +1,10 @@
 // settings.js
 // Central settings module with local cache and hooks for future cloud sync
 
+const SHORTCUT_DEFAULTS = Object.freeze({
+  zoomFullResolution: [null, null],
+});
+
 const SETTINGS_DEFAULTS = Object.freeze({
   schemaVersion: 1,
   theme: 'light', // UI theme for future options page styling
@@ -8,6 +12,7 @@ const SETTINGS_DEFAULTS = Object.freeze({
   enablePrefetch: true, // Future optimization: prefetch high-res images on hover intent
   enableAnimations: true, // Enable/disable image animations and transitions
   hoverDelay: 300, // Delay before showing enlarged image (ms)
+  shortcuts: SHORTCUT_DEFAULTS,
   apiKeys: {}, // User-defined API keys for rules that fetch from external APIs
   builtInRules: [
     // Element Detection Patterns
@@ -158,6 +163,7 @@ function ensureDefaults(data) {
   // Preserve schemaVersion from defaults if missing
   if (!merged.schemaVersion)
     merged.schemaVersion = SETTINGS_DEFAULTS.schemaVersion;
+  merged.shortcuts = mergeShortcuts(merged.shortcuts);
   // Ensure builtInRules array exists and merge with user preferences
   if (!Array.isArray(merged.builtInRules)) {
     merged.builtInRules = deepClone(SETTINGS_DEFAULTS.builtInRules);
@@ -233,6 +239,29 @@ function notify() {
       console.warn('Settings subscriber error', e);
     }
   });
+}
+
+function normalizeBinding(binding) {
+  if (!binding || typeof binding !== 'object') return null;
+  const type = binding.type === 'mouse' ? 'mouse' : 'keyboard';
+  const combo = typeof binding.combo === 'string' && binding.combo.trim();
+  if (!combo) return null;
+  return { type, combo };
+}
+
+function mergeShortcuts(raw) {
+  const base = deepClone(SHORTCUT_DEFAULTS);
+  if (raw && typeof raw === 'object') {
+    for (const [key, value] of Object.entries(raw)) {
+      if (Array.isArray(value)) {
+        base[key] = [
+          normalizeBinding(value[0]) || null,
+          normalizeBinding(value[1]) || null,
+        ];
+      }
+    }
+  }
+  return base;
 }
 
 // Listen for external changes (e.g., another extension page updating settings)
