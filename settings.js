@@ -9,6 +9,111 @@ const SETTINGS_DEFAULTS = Object.freeze({
   enableAnimations: true, // Enable/disable image animations and transitions
   hoverDelay: 300, // Delay before showing enlarged image (ms)
   apiKeys: {}, // User-defined API keys for rules that fetch from external APIs
+  builtInRules: [
+    // Element Detection Patterns
+    {
+      id: 'sibling-image-pattern',
+      name: 'Sibling Image Pattern',
+      enabled: true,
+      category: 'detection',
+      description:
+        'Detects overlay elements (like IMDb posters) and finds the adjacent image to display',
+    },
+    {
+      id: 'parent-anchor-image',
+      name: 'Parent Anchor Image URL',
+      enabled: true,
+      category: 'detection',
+      description:
+        'When an image is wrapped in a link pointing to an image, prefer the link target',
+    },
+    {
+      id: 'anchor-image-links',
+      name: 'Anchor Image Links',
+      enabled: true,
+      category: 'detection',
+      description:
+        'Show images when hovering over links that point directly to image files',
+    },
+    {
+      id: 'background-image-css',
+      name: 'CSS Background Images',
+      enabled: true,
+      category: 'detection',
+      description:
+        'Display background-image CSS properties as enlargeable images',
+    },
+
+    // CSS Pointer-Events Fixes (Site-Specific)
+    {
+      id: 'css-fix-instagram',
+      name: 'Instagram Overlay Fix',
+      enabled: true,
+      category: 'css-fixes',
+      description:
+        'Disable pointer-events on Instagram overlay elements that block image interaction',
+    },
+    {
+      id: 'css-fix-youtube',
+      name: 'YouTube Overlay Fix',
+      enabled: true,
+      category: 'css-fixes',
+      description:
+        'Disable pointer-events on YouTube thumbnail overlays that intercept hover',
+    },
+    {
+      id: 'css-fix-pinterest',
+      name: 'Pinterest Overlay Fix',
+      enabled: true,
+      category: 'css-fixes',
+      description: 'Disable pointer-events on Pinterest overlay elements',
+    },
+    {
+      id: 'css-fix-twitter',
+      name: 'Twitter/X Overlay Fix',
+      enabled: true,
+      category: 'css-fixes',
+      description: 'Disable pointer-events on Twitter/X overlay elements',
+    },
+    {
+      id: 'css-fix-facebook',
+      name: 'Facebook/Meta Overlay Fix',
+      enabled: true,
+      category: 'css-fixes',
+      description:
+        'Disable pointer-events on Facebook/Meta presentation overlays',
+    },
+    {
+      id: 'css-fix-reddit',
+      name: 'Reddit Overlay Fix',
+      enabled: true,
+      category: 'css-fixes',
+      description: 'Disable pointer-events on Reddit image overlays',
+    },
+    {
+      id: 'css-fix-tumblr',
+      name: 'Tumblr Overlay Fix',
+      enabled: true,
+      category: 'css-fixes',
+      description: 'Disable pointer-events on Tumblr image wrapper overlays',
+    },
+    {
+      id: 'css-fix-generic-overlays',
+      name: 'Generic Overlay Patterns',
+      enabled: true,
+      category: 'css-fixes',
+      description:
+        'Disable pointer-events on common overlay patterns (empty positioned elements)',
+    },
+    {
+      id: 'css-fix-generic-classes',
+      name: 'Generic Overlay Classes',
+      enabled: true,
+      category: 'css-fixes',
+      description:
+        'Disable pointer-events on elements with common overlay class names',
+    },
+  ],
   customRules: [
     // Custom rules for finding higher-quality images
     {
@@ -53,6 +158,19 @@ function ensureDefaults(data) {
   // Preserve schemaVersion from defaults if missing
   if (!merged.schemaVersion)
     merged.schemaVersion = SETTINGS_DEFAULTS.schemaVersion;
+  // Ensure builtInRules array exists and merge with user preferences
+  if (!Array.isArray(merged.builtInRules)) {
+    merged.builtInRules = deepClone(SETTINGS_DEFAULTS.builtInRules);
+  } else {
+    // Merge user preferences with defaults (keep user enabled/disabled state)
+    const userPrefs = new Map(merged.builtInRules.map(r => [r.id, r.enabled]));
+    merged.builtInRules = SETTINGS_DEFAULTS.builtInRules.map(defaultRule => {
+      const enabled = userPrefs.has(defaultRule.id)
+        ? userPrefs.get(defaultRule.id)
+        : defaultRule.enabled;
+      return { ...defaultRule, enabled };
+    });
+  }
   return merged;
 }
 

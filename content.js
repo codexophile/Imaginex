@@ -9,6 +9,7 @@
   let HOVER_DELAY = 300; // default; will be overridden by settings
   let ENABLE_ANIMATIONS = true; // default; will be overridden by settings
   let customRules = []; // Custom rules for finding higher-quality images
+  let builtInRules = new Map(); // Built-in rules (id -> enabled state)
 
   const SETTINGS_INTERNAL_KEY = '__settings_v1';
 
@@ -23,6 +24,12 @@
       customRules = raw.customRules.filter(r => r && r.enabled);
       console.log('Loaded custom rules:', customRules.length, customRules);
     }
+    if (Array.isArray(raw.builtInRules)) {
+      builtInRules = new Map(raw.builtInRules.map(r => [r.id, r.enabled]));
+      console.log('Loaded built-in rules:', builtInRules.size, 'rules');
+      // Reapply CSS fixes when built-in rules change
+      reapplyCssFixes();
+    }
   }
 
   // Apply or remove animation classes/styles based on settings
@@ -32,6 +39,11 @@
     } else {
       document.documentElement.classList.add('imagus-no-animations');
     }
+  }
+
+  // Check if a built-in rule is enabled
+  function isRuleEnabled(ruleId) {
+    return builtInRules.get(ruleId) !== false; // default true if not found
   }
 
   // Load settings directly from storage (MV3 content scripts can't reliably dynamic-import extension modules)
@@ -410,14 +422,21 @@
 
   // Detect patterns where a non-image element sits alongside the real image (e.g., IMDb overlays)
   function findSiblingImageCandidate(trigger) {
+    if (!isRuleEnabled('sibling-image-pattern')) return null;
     if (!trigger || !trigger.parentElement) return null;
     const siblings = Array.from(trigger.parentElement.children).filter(
       node => node !== trigger
     );
 
     for (const sib of siblings) {
-      const img = sib.querySelector?.('img');
-      if (img) return img;
+      const img = sib.querySelector(':scope > img');
+      if (img) {
+        console.log(
+          '[Built-in Rule: Sibling Image Pattern] Found sibling image for trigger:',
+          trigger
+        );
+        return img;
+      }
     }
 
     return null;
@@ -1082,10 +1101,14 @@
         // prefer the anchor's href as the high-resolution source.
         const parentAnchor = img.closest('a');
         const href = parentAnchor?.href || null;
-        if (href && isImageURL(href)) {
+        if (isRuleEnabled('parent-anchor-image') && href && isImageURL(href)) {
           // Avoid redundant load if href equals current src/best source
           const bestFromImg = getBestImageSource(img);
           if (href !== bestFromImg) {
+            console.log(
+              '[Built-in Rule: Parent Anchor Image URL] Using anchor href:',
+              href
+            );
             showEnlargedImage(img, event.clientX, event.clientY, href);
             return;
           }
@@ -1272,6 +1295,8 @@
 
   // Handle mouse enter on anchor elements with image URLs
   async function handleAnchorMouseEnter(event) {
+    if (!isRuleEnabled('anchor-image-links')) return;
+
     const anchor = event.target;
     const href = anchor.href;
 
@@ -1284,6 +1309,11 @@
     if (!isImageURL(href)) {
       return;
     }
+
+    console.log(
+      '[Built-in Rule: Anchor Image Links] Detected anchor link to image:',
+      href
+    );
 
     currentImg = anchor;
     currentTrigger = anchor;
@@ -1329,6 +1359,8 @@
 
   // Handle mouse enter on elements with background-image
   async function handleBackgroundImageMouseEnter(event) {
+    if (!isRuleEnabled('background-image-css')) return;
+
     const element = event.target;
 
     // Skip if same element
@@ -1341,8 +1373,12 @@
       return;
     }
 
+    console.log(
+      '[Built-in Rule: CSS Background Images] Detected background-image:',
+      bgUrl
+    );
+
     currentImg = element;
-    currentTrigger = element;
     currentTrigger = element;
 
     // Clear any existing timer
@@ -1396,14 +1432,21 @@
   // Inject universal CSS fixes for blocking overlay elements
   function injectUniversalFixes() {
     const style = document.createElement('style');
-    style.textContent = `
-      /* Universal fixes for elements that block image mouse events */
-      /* Instagram overlays */
+    style.id = 'imagus-css-fixes';
+
+    let cssRules = [];
+
+    // Instagram overlays
+    if (isRuleEnabled('css-fix-instagram')) {
+      cssRules.push(`/* Instagram overlays */
       ._aagw {
         pointer-events: none !important;
-      }
+      }`);
+    }
 
-      /* Common overlay patterns that block image interaction */
+    // Common overlay patterns
+    if (isRuleEnabled('css-fix-generic-overlays')) {
+      cssRules.push(`/* Common overlay patterns that block image interaction */
       [style*="position: absolute"][style*="inset: 0"]:not(img):not(video):empty {
         pointer-events: none !important;
       }
@@ -1412,54 +1455,85 @@
       div[style*="position: absolute"]:empty,
       div[style*="position: fixed"]:empty {
         pointer-events: none !important;
-      }
+      }`);
+    }
 
-      /* Pinterest overlays */
+    // Pinterest overlays
+    if (isRuleEnabled('css-fix-pinterest')) {
+      cssRules.push(`/* Pinterest overlays */
       div[data-test-id*="overlay"]:empty {
         pointer-events: none !important;
-      }
+      }`);
+    }
 
-      /* Twitter/X overlays */
+    // Twitter/X overlays
+    if (isRuleEnabled('css-fix-twitter')) {
+      cssRules.push(`/* Twitter/X overlays */
       div[data-testid*="overlay"]:empty {
         pointer-events: none !important;
-      }
+      }`);
+    }
 
-      /* Facebook/Meta overlays */
+    // Facebook/Meta overlays
+    if (isRuleEnabled('css-fix-facebook')) {
+      cssRules.push(`/* Facebook/Meta overlays */
       div[role="presentation"]:empty {
         pointer-events: none !important;
-      }
+      }`);
+    }
 
-      /* Generic overlay class patterns */
+    // Generic overlay class patterns
+    if (isRuleEnabled('css-fix-generic-classes')) {
+      cssRules.push(`/* Generic overlay class patterns */
       .overlay:empty,
       .image-overlay:empty,
       .hover-overlay:empty,
       .transparent-overlay:empty,
       .block-overlay:empty {
         pointer-events: none !important;
-      }
+      }`);
+    }
 
-      /* Site-specific fixes */
-      /* Tumblr image overlays */
+    // Tumblr image overlays
+    if (isRuleEnabled('css-fix-tumblr')) {
+      cssRules.push(`/* Tumblr image overlays */
       .post-content .image-wrapper > div:empty {
         pointer-events: none !important;
-      }
+      }`);
+    }
 
-      /* Reddit image overlays */
+    // Reddit image overlays
+    if (isRuleEnabled('css-fix-reddit')) {
+      cssRules.push(`/* Reddit image overlays */
       ._1JmnMJclrTwTPpAip5U_Hm:empty {
         pointer-events: none !important;
-      }
+      }`);
+    }
 
-      /* YouTube overlays that often intercept hover */
+    // YouTube overlays
+    if (isRuleEnabled('css-fix-youtube')) {
+      cssRules.push(`/* YouTube overlays that often intercept hover */
       ytd-thumbnail [class*="overlay"],
       ytd-thumbnail-overlay-time-status-renderer,
       ytd-thumbnail-overlay-toggle-button-renderer,
       ytd-thumbnail-overlay-now-playing-renderer {
         pointer-events: none !important;
-      }
-    `;
+      }`);
+    }
+
+    style.textContent = cssRules.join('\n\n');
 
     // Insert at the beginning of head to ensure lower specificity doesn't override
     document.head.insertBefore(style, document.head.firstChild);
+  }
+
+  // Reapply CSS fixes when settings change
+  function reapplyCssFixes() {
+    const existing = document.getElementById('imagus-css-fixes');
+    if (existing) {
+      existing.remove();
+    }
+    injectUniversalFixes();
   }
 
   // Message handler for rule testing from options page

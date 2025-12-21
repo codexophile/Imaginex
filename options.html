@@ -343,6 +343,7 @@
           <li id="shortcuts" class="sidebar-item">Shortcuts</li>
           <li id="cloudSync" class="sidebar-item">Cloud Sync</li>
           <li id="apiKeys" class="sidebar-item">API Keys</li>
+          <li id="builtInRules" class="sidebar-item">Built-in Rules</li>
           <li id="customRules" class="sidebar-item">Custom Rules</li>
         </ul>
       </div>
@@ -430,6 +431,31 @@
               <input type="text" id="apiKeyName" placeholder="Key name (e.g., youtubeApiKey)" style="flex:1;" />
               <input type="password" id="apiKeyValue" placeholder="API key value" style="flex:2;" />
               <button id="addApiKeyBtn">Add Key</button>
+            </div>
+          </section>
+        </div>
+
+        <div id="section-builtInRules" class="section-content">
+          <section>
+            <h2>Built-in Rules</h2>
+            <p style="margin-top:0; font-size:13px; opacity:.8;">
+              These are hardcoded patterns and behaviors that help the extension detect and display images across
+              various sites.
+              Toggle individual rules on or off to customize the extension's behavior.
+            </p>
+
+            <h3 style="font-size:14px; margin-top:20px; margin-bottom:10px; opacity:0.9;">Element Detection Patterns
+            </h3>
+            <div id="builtInRulesDetection" class="custom-rules-list">
+              <!-- Detection rules will be dynamically inserted here -->
+            </div>
+
+            <h3 style="font-size:14px; margin-top:24px; margin-bottom:10px; opacity:0.9;">Site-Specific CSS Fixes</h3>
+            <p style="font-size:12px; opacity:0.7; margin-top:0;">
+              These fixes disable pointer-events on overlay elements that block hover interactions on various websites.
+            </p>
+            <div id="builtInRulesCssFixes" class="custom-rules-list">
+              <!-- CSS fix rules will be dynamically inserted here -->
             </div>
           </section>
         </div>

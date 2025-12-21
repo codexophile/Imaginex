@@ -56,6 +56,10 @@ async function init() {
   els.apiKeyValue = $('apiKeyValue');
   els.addApiKeyBtn = $('addApiKeyBtn');
 
+  // Built-in rules elements
+  els.builtInRulesDetection = $('builtInRulesDetection');
+  els.builtInRulesCssFixes = $('builtInRulesCssFixes');
+
   // Custom rules elements
   els.customRulesList = $('customRulesList');
   els.addRuleBtn = $('addRuleBtn');
@@ -76,6 +80,7 @@ async function init() {
   const s = await loadSettings();
   initial = s;
   bindValues(s);
+  renderBuiltInRules(s.builtInRules || []);
   renderCustomRules(s.customRules || []);
   renderApiKeys(s.apiKeys || {});
   applyTheme(s.theme);
@@ -292,6 +297,74 @@ function renderApiKeys(apiKeys) {
     btn.addEventListener('click', handleDeleteApiKey);
   });
 }
+
+// Built-in Rules Management
+function renderBuiltInRules(rules) {
+  const detectionRules = rules.filter(r => r.category === 'detection');
+  const cssFixRules = rules.filter(r => r.category === 'css-fixes');
+
+  renderBuiltInRulesCategory(els.builtInRulesDetection, detectionRules);
+  renderBuiltInRulesCategory(els.builtInRulesCssFixes, cssFixRules);
+}
+
+function renderBuiltInRulesCategory(container, rules) {
+  if (!container) return;
+
+  if (!rules || rules.length === 0) {
+    container.innerHTML =
+      '<p style="opacity: 0.6; font-size: 13px;">No rules in this category.</p>';
+    return;
+  }
+
+  container.innerHTML = rules
+    .map(
+      rule => `
+    <div class="rule-item" data-rule-id="${rule.id}">
+      <div class="rule-header">
+        <div class="rule-name">
+          <span class="toggle-enabled">
+            <input type="checkbox" 
+              class="builtin-rule-enabled-toggle" 
+              data-rule-id="${rule.id}" 
+              ${rule.enabled ? 'checked' : ''} />
+            ${escapeHtml(rule.name)}
+          </span>
+        </div>
+      </div>
+      <div class="rule-details">
+        ${escapeHtml(rule.description)}
+      </div>
+    </div>
+  `
+    )
+    .join('');
+
+  // Wire up event handlers
+  container.querySelectorAll('.builtin-rule-enabled-toggle').forEach(toggle => {
+    toggle.addEventListener('change', handleToggleBuiltInRule);
+  });
+}
+
+async function handleToggleBuiltInRule(e) {
+  const ruleId = e.target.dataset.ruleId;
+  const enabled = e.target.checked;
+
+  const builtInRules = (initial.builtInRules || []).map(r =>
+    r.id === ruleId ? { ...r, enabled } : r
+  );
+
+  await updateSettings({ builtInRules });
+  initial = await loadSettings();
+
+  els.status.textContent = enabled
+    ? `Rule enabled: ${ruleId}`
+    : `Rule disabled: ${ruleId}`;
+  setTimeout(() => {
+    els.status.textContent = '';
+  }, 1500);
+}
+
+// API Keys Management (keeping existing code)
 
 async function handleAddApiKey() {
   const name = els.apiKeyName.value.trim();
