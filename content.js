@@ -73,6 +73,7 @@
         `;
 
     const img = document.createElement('img');
+    img.id = 'image-enlarger-overlay-img';
     img.style.cssText = `
             display: block;
             width: 100%;
@@ -429,7 +430,9 @@
     );
 
     for (const sib of siblings) {
-      const img = sib.querySelector(':scope > img');
+      const img = sib.querySelector(
+        ':scope > img:not(#image-enlarger-overlay-img)'
+      );
       if (img) {
         console.log(
           '[Built-in Rule: Sibling Image Pattern] Found sibling image for trigger:',
