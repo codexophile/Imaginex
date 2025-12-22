@@ -486,6 +486,10 @@ function wireEvents() {
         await updateSettings(cloudSettings);
         initial = { ...initial, ...cloudSettings };
         bindValues(initial);
+        renderCustomRules(initial.customRules || []);
+        renderApiKeys(initial.apiKeys || {});
+        renderBuiltInRules(initial.builtInRules || []);
+        renderShortcuts(initial.shortcuts || {});
         els.cloudStatus.textContent = 'Loaded from cloud.';
       } catch (e) {
         els.cloudStatus.textContent = 'Cloud load failed: ' + (e?.message || e);
@@ -561,8 +565,36 @@ function onExternalChange(newSettings) {
     initial.shortcuts = latestShortcuts;
     changed = true;
   }
-  if (changed && !dirty) {
+  const apiKeysChanged =
+    JSON.stringify(newSettings.apiKeys || {}) !==
+    JSON.stringify(initial.apiKeys || {});
+  if (apiKeysChanged) {
+    initial.apiKeys = newSettings.apiKeys || {};
+  }
+
+  const customRulesChanged =
+    JSON.stringify(newSettings.customRules || []) !==
+    JSON.stringify(initial.customRules || []);
+  if (customRulesChanged) {
+    initial.customRules = newSettings.customRules || [];
+  }
+
+  const builtInRulesChanged =
+    JSON.stringify(newSettings.builtInRules || []) !==
+    JSON.stringify(initial.builtInRules || []);
+  if (builtInRulesChanged) {
+    initial.builtInRules = newSettings.builtInRules || [];
+  }
+
+  if (
+    (changed || apiKeysChanged || customRulesChanged || builtInRulesChanged) &&
+    !dirty
+  ) {
     bindValues(initial);
+    renderApiKeys(initial.apiKeys || {});
+    renderCustomRules(initial.customRules || []);
+    renderBuiltInRules(initial.builtInRules || []);
+    renderShortcuts(initial.shortcuts || {});
   }
 }
 
