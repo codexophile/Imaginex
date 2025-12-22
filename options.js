@@ -342,6 +342,8 @@ async function init() {
   els.ruleExtract = $('ruleExtract');
   els.ruleUserScript = $('ruleUserScript');
   els.ruleApi = $('ruleApi');
+  els.ruleAllowDomains = $('ruleAllowDomains');
+  els.ruleExcludeDomains = $('ruleExcludeDomains');
   els.saveRuleBtn = $('saveRuleBtn');
   els.cancelRuleBtn = $('cancelRuleBtn');
   els.testRuleBtn = $('testRuleBtn');
@@ -601,8 +603,26 @@ function renderBuiltInRulesCategory(container, rules) {
   }
 
   container.innerHTML = rules
-    .map(
-      rule => `
+    .map(rule => {
+      const domainInfo = [];
+      if (Array.isArray(rule.allowDomains) && rule.allowDomains.length > 0) {
+        domainInfo.push(
+          `<strong>Allowed:</strong> ${escapeHtml(
+            rule.allowDomains.join(', ')
+          )}`
+        );
+      }
+      if (
+        Array.isArray(rule.excludeDomains) &&
+        rule.excludeDomains.length > 0
+      ) {
+        domainInfo.push(
+          `<strong>Excluded:</strong> ${escapeHtml(
+            rule.excludeDomains.join(', ')
+          )}`
+        );
+      }
+      return `
     <div class="rule-item" data-rule-id="${rule.id}">
       <div class="rule-header">
         <div class="rule-name">
@@ -617,10 +637,17 @@ function renderBuiltInRulesCategory(container, rules) {
       </div>
       <div class="rule-details">
         ${escapeHtml(rule.description)}
+        ${
+          domainInfo.length > 0
+            ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1); font-size: 11px;">${domainInfo.join(
+                ' | '
+              )}</div>`
+            : ''
+        }
       </div>
     </div>
-  `
-    )
+  `;
+    })
     .join('');
 
   // Wire up event handlers
@@ -703,8 +730,26 @@ function renderCustomRules(rules) {
   }
 
   container.innerHTML = rules
-    .map(
-      rule => `
+    .map(rule => {
+      const domainInfo = [];
+      if (Array.isArray(rule.allowDomains) && rule.allowDomains.length > 0) {
+        domainInfo.push(
+          `<strong>Allowed:</strong> ${escapeHtml(
+            rule.allowDomains.join(', ')
+          )}`
+        );
+      }
+      if (
+        Array.isArray(rule.excludeDomains) &&
+        rule.excludeDomains.length > 0
+      ) {
+        domainInfo.push(
+          `<strong>Excluded:</strong> ${escapeHtml(
+            rule.excludeDomains.join(', ')
+          )}`
+        );
+      }
+      return `
     <div class="rule-item" data-rule-id="${rule.id}">
       <div class="rule-header">
         <div class="rule-name">
@@ -739,10 +784,17 @@ function renderCustomRules(rules) {
             ? `<div><strong>Extract:</strong> ${rule.extract.length} step(s)</div>`
             : ''
         }
+        ${
+          domainInfo.length > 0
+            ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1); font-size: 11px;">${domainInfo.join(
+                ' | '
+              )}</div>`
+            : ''
+        }
       </div>
     </div>
-  `
-    )
+  `;
+    })
     .join('');
 
   // Wire up event handlers for the rendered rules
@@ -772,6 +824,8 @@ function handleAddRule() {
   els.ruleExtract.value = '';
   els.ruleUserScript.value = '';
   els.ruleApi.value = '';
+  els.ruleAllowDomains.value = '';
+  els.ruleExcludeDomains.value = '';
   els.ruleForm.style.display = 'block';
   els.ruleName.focus();
 }
@@ -799,6 +853,13 @@ function handleEditRule(e) {
   } else {
     els.ruleApi.value = '';
   }
+  // Populate domain fields
+  els.ruleAllowDomains.value = Array.isArray(rule.allowDomains)
+    ? rule.allowDomains.join(', ')
+    : '';
+  els.ruleExcludeDomains.value = Array.isArray(rule.excludeDomains)
+    ? rule.excludeDomains.join(', ')
+    : '';
   els.ruleForm.style.display = 'block';
   els.ruleName.focus();
 }
@@ -1087,6 +1148,17 @@ async function handleSaveRule() {
     }
   }
 
+  // Parse domain fields
+  const parseDomainsInput = input => {
+    return (input || '')
+      .split(',')
+      .map(d => d.trim())
+      .filter(d => d.length > 0);
+  };
+
+  const allowDomains = parseDomainsInput(els.ruleAllowDomains.value);
+  const excludeDomains = parseDomainsInput(els.ruleExcludeDomains.value);
+
   if (!name || !selector) {
     alert('Rule name and CSS selector are required.');
     return;
@@ -1121,6 +1193,8 @@ async function handleSaveRule() {
         extract,
         userScript: userScript || undefined,
         api,
+        allowDomains: allowDomains.length > 0 ? allowDomains : [],
+        excludeDomains: excludeDomains.length > 0 ? excludeDomains : [],
       };
       delete rules[index].customJS;
     }
@@ -1135,6 +1209,8 @@ async function handleSaveRule() {
       extract,
       userScript: userScript || undefined,
       api,
+      allowDomains: allowDomains.length > 0 ? allowDomains : [],
+      excludeDomains: excludeDomains.length > 0 ? excludeDomains : [],
     };
     rules.push(newRule);
   }

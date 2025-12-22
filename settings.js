@@ -55,6 +55,8 @@ const SETTINGS_DEFAULTS = Object.freeze({
       name: 'Instagram Overlay Fix',
       enabled: true,
       category: 'css-fixes',
+      allowDomains: ['instagram.com', '*.instagram.com'],
+      excludeDomains: [],
       description:
         'Disable pointer-events on Instagram overlay elements that block image interaction',
     },
@@ -63,6 +65,8 @@ const SETTINGS_DEFAULTS = Object.freeze({
       name: 'YouTube Overlay Fix',
       enabled: true,
       category: 'css-fixes',
+      allowDomains: ['youtube.com', '*.youtube.com', 'youtu.be'],
+      excludeDomains: [],
       description:
         'Disable pointer-events on YouTube thumbnail overlays that intercept hover',
     },
@@ -71,6 +75,8 @@ const SETTINGS_DEFAULTS = Object.freeze({
       name: 'Pinterest Overlay Fix',
       enabled: true,
       category: 'css-fixes',
+      allowDomains: ['pinterest.com', '*.pinterest.com'],
+      excludeDomains: [],
       description: 'Disable pointer-events on Pinterest overlay elements',
     },
     {
@@ -78,6 +84,8 @@ const SETTINGS_DEFAULTS = Object.freeze({
       name: 'Twitter/X Overlay Fix',
       enabled: true,
       category: 'css-fixes',
+      allowDomains: ['twitter.com', '*.twitter.com', 'x.com', '*.x.com'],
+      excludeDomains: [],
       description: 'Disable pointer-events on Twitter/X overlay elements',
     },
     {
@@ -85,6 +93,13 @@ const SETTINGS_DEFAULTS = Object.freeze({
       name: 'Facebook/Meta Overlay Fix',
       enabled: true,
       category: 'css-fixes',
+      allowDomains: [
+        'facebook.com',
+        '*.facebook.com',
+        'meta.com',
+        '*.meta.com',
+      ],
+      excludeDomains: [],
       description:
         'Disable pointer-events on Facebook/Meta presentation overlays',
     },
@@ -93,6 +108,8 @@ const SETTINGS_DEFAULTS = Object.freeze({
       name: 'Reddit Overlay Fix',
       enabled: true,
       category: 'css-fixes',
+      allowDomains: ['reddit.com', '*.reddit.com'],
+      excludeDomains: [],
       description: 'Disable pointer-events on Reddit image overlays',
     },
     {
@@ -100,6 +117,8 @@ const SETTINGS_DEFAULTS = Object.freeze({
       name: 'Tumblr Overlay Fix',
       enabled: true,
       category: 'css-fixes',
+      allowDomains: ['tumblr.com', '*.tumblr.com'],
+      excludeDomains: [],
       description: 'Disable pointer-events on Tumblr image wrapper overlays',
     },
     {
@@ -126,6 +145,8 @@ const SETTINGS_DEFAULTS = Object.freeze({
       name: 'YouTube Video Thumbnails',
       enabled: true,
       selector: 'a#thumbnail img[src*="i.ytimg.com"]',
+      allowDomains: ['youtube.com', '*.youtube.com', 'youtu.be'],
+      excludeDomains: [],
       urlTemplate: 'https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp',
       extract: [
         {

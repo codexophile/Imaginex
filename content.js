@@ -9,7 +9,8 @@
   let HOVER_DELAY = 300; // default; will be overridden by settings
   let ENABLE_ANIMATIONS = true; // default; will be overridden by settings
   let customRules = []; // Custom rules for finding higher-quality images
-  let builtInRules = new Map(); // Built-in rules (id -> enabled state)
+  let builtInRulesMap = new Map(); // Built-in rules (id -> full rule object)
+  let allBuiltInRules = []; // Store all built-in rules for domain filtering
 
   const SETTINGS_INTERNAL_KEY = '__settings_v1';
 
@@ -21,12 +22,27 @@
       applyAnimationSettings();
     }
     if (Array.isArray(raw.customRules)) {
-      customRules = raw.customRules.filter(r => r && r.enabled);
-      console.log('Loaded custom rules:', customRules.length, customRules);
+      const hostname = window.location.hostname;
+      // Filter custom rules: enabled AND applies to this domain
+      customRules = raw.customRules.filter(
+        r => r && r.enabled && shouldRunRule(r, hostname)
+      );
+      console.log(
+        'Loaded custom rules:',
+        customRules.length,
+        'of',
+        (raw.customRules || []).length,
+        'for domain:',
+        hostname
+      );
     }
     if (Array.isArray(raw.builtInRules)) {
-      builtInRules = new Map(raw.builtInRules.map(r => [r.id, r.enabled]));
-      console.log('Loaded built-in rules:', builtInRules.size, 'rules');
+      const hostname = window.location.hostname;
+      // Store full rule objects for domain filtering
+      allBuiltInRules = raw.builtInRules || [];
+      // Create map: id -> rule object
+      builtInRulesMap = new Map(raw.builtInRules.map(r => [r.id, r]));
+      console.log('Loaded built-in rules:', builtInRulesMap.size, 'rules');
       // Reapply CSS fixes when built-in rules change
       reapplyCssFixes();
     }
@@ -41,9 +57,61 @@
     }
   }
 
-  // Check if a built-in rule is enabled
+  // Check if a built-in rule is enabled AND applies to current domain
   function isRuleEnabled(ruleId) {
-    return builtInRules.get(ruleId) !== false; // default true if not found
+    const rule = builtInRulesMap.get(ruleId);
+    if (!rule || rule.enabled === false) return false;
+
+    // Check domain restrictions
+    const hostname = window.location.hostname;
+    return shouldRunRule(rule, hostname);
+  }
+
+  // Domain matching helper - supports wildcards (*.example.com) and exact/suffix matches
+  function matchesDomain(hostname, pattern) {
+    if (!pattern) return false;
+    // Handle wildcards: *.example.com
+    if (pattern.startsWith('*.')) {
+      const domain = pattern.slice(2); // Remove "*."
+      return hostname === domain || hostname.endsWith('.' + domain);
+    }
+    // Exact or suffix match: example.com matches example.com and sub.example.com
+    return hostname === pattern || hostname.endsWith('.' + pattern);
+  }
+
+  // Check if a rule should run on the current domain
+  function shouldRunRule(rule, hostname) {
+    // If rule has no domain restrictions, it runs everywhere
+    if (!rule.allowDomains || rule.allowDomains.length === 0) {
+      // But still check excludeDomains if present
+      if (
+        Array.isArray(rule.excludeDomains) &&
+        rule.excludeDomains.length > 0
+      ) {
+        const isExcluded = rule.excludeDomains.some(pattern =>
+          matchesDomain(hostname, pattern)
+        );
+        return !isExcluded;
+      }
+      return true;
+    }
+
+    // Check if hostname matches any allowed domain
+    const isAllowed = rule.allowDomains.some(pattern =>
+      matchesDomain(hostname, pattern)
+    );
+
+    if (!isAllowed) return false;
+
+    // Also check excludeDomains if present (exclude takes priority)
+    if (Array.isArray(rule.excludeDomains) && rule.excludeDomains.length > 0) {
+      const isExcluded = rule.excludeDomains.some(pattern =>
+        matchesDomain(hostname, pattern)
+      );
+      return !isExcluded;
+    }
+
+    return true;
   }
 
   // Load settings directly from storage (MV3 content scripts can't reliably dynamic-import extension modules)

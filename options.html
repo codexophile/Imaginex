@@ -622,6 +622,27 @@
                 </div>
               </div>
 
+              <div class="form-group">
+                <label for="ruleAllowDomains">Allowed Domains (Optional)</label>
+                <input type="text" id="ruleAllowDomains"
+                  placeholder="e.g., youtube.com, *.youtube.com, youtu.be (comma-separated)" />
+                <div class="help-text">
+                  Comma-separated list of domains where this rule should run. Supports wildcards (*.example.com).
+                  Leave empty to apply this rule to all domains. Matches both exact domains and subdomains.
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="ruleExcludeDomains">Excluded Domains (Optional)</label>
+                <input type="text" id="ruleExcludeDomains"
+                  placeholder="e.g., example.com, *.example.com (comma-separated)" />
+                <div class="help-text">
+                  Comma-separated list of domains where this rule should NOT run. Excludes take priority over allowed
+                  domains.
+                  Supports wildcards (*.example.com).
+                </div>
+              </div>
+
               <div class="form-actions">
                 <button id="testRuleBtn" class="secondary">Test on Current Tab</button>
                 <button id="saveRuleBtn">Save Rule</button>
