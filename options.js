@@ -338,10 +338,7 @@ async function init() {
   els.formTitle = $('formTitle');
   els.ruleName = $('ruleName');
   els.ruleSelector = $('ruleSelector');
-  els.ruleUrlTemplate = $('ruleUrlTemplate');
-  els.ruleExtract = $('ruleExtract');
   els.ruleUserScript = $('ruleUserScript');
-  els.ruleApi = $('ruleApi');
   els.ruleAllowDomains = $('ruleAllowDomains');
   els.ruleExcludeDomains = $('ruleExcludeDomains');
   els.saveRuleBtn = $('saveRuleBtn');
@@ -773,16 +770,11 @@ function renderCustomRules(rules) {
           rule.selector
         )}</code></div>
         ${
-          rule.urlTemplate
-            ? `<div><strong>URL Template:</strong> <code>${escapeHtml(
-                rule.urlTemplate
-              )}</code></div>`
-            : ''
-        }
-        ${
-          Array.isArray(rule.extract) && rule.extract.length
-            ? `<div><strong>Extract:</strong> ${rule.extract.length} step(s)</div>`
-            : ''
+          rule.userScript
+            ? `<div><strong>Script:</strong> ${escapeHtml(
+                (rule.userScript || '').slice(0, 80)
+              )}...</div>`
+            : '<div style="color:#e57373;">No Custom JavaScript</div>'
         }
         ${
           domainInfo.length > 0
@@ -820,10 +812,7 @@ function handleAddRule() {
   els.formTitle.textContent = 'New Rule';
   els.ruleName.value = '';
   els.ruleSelector.value = '';
-  els.ruleUrlTemplate.value = '';
-  els.ruleExtract.value = '';
   els.ruleUserScript.value = '';
-  els.ruleApi.value = '';
   els.ruleAllowDomains.value = '';
   els.ruleExcludeDomains.value = '';
   els.ruleForm.style.display = 'block';
@@ -840,19 +829,8 @@ function handleEditRule(e) {
   els.formTitle.textContent = 'Edit Rule';
   els.ruleName.value = rule.name;
   els.ruleSelector.value = rule.selector;
-  els.ruleUrlTemplate.value = rule.urlTemplate || '';
-  if (Array.isArray(rule.extract) && rule.extract.length) {
-    els.ruleExtract.value = JSON.stringify(rule.extract, null, 2);
-  } else {
-    els.ruleExtract.value = '';
-  }
   els.ruleUserScript.value =
     typeof rule.userScript === 'string' ? rule.userScript : '';
-  if (rule.api && typeof rule.api === 'object') {
-    els.ruleApi.value = JSON.stringify(rule.api, null, 2);
-  } else {
-    els.ruleApi.value = '';
-  }
   // Populate domain fields
   els.ruleAllowDomains.value = Array.isArray(rule.allowDomains)
     ? rule.allowDomains.join(', ')
@@ -864,289 +842,10 @@ function handleEditRule(e) {
   els.ruleName.focus();
 }
 
-function parseExtractInput(text) {
-  const raw = (text || '').trim();
-  if (!raw) return null;
-
-  const sanitizeFlags = f => {
-    if (f == null) return undefined;
-    const s = String(f).trim();
-    if (!s) return undefined;
-    const allowed = 'gimsuy';
-    const uniq = Array.from(new Set(s.split('')))
-      .filter(ch => allowed.includes(ch))
-      .join('');
-    if (uniq.length !== s.length) {
-      throw new Error('Invalid regular expression flags. Allowed: g i m s u y');
-    }
-    return uniq || undefined;
-  };
-
-  // JSON mode
-  if (raw.startsWith('[')) {
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (_) {
-      throw new Error('Extract Rules must be valid JSON.');
-    }
-    if (!Array.isArray(parsed)) {
-      throw new Error('Extract Rules JSON must be an array.');
-    }
-    for (const step of parsed) {
-      if (!step || typeof step !== 'object') {
-        throw new Error('Each Extract Rules step must be an object.');
-      }
-      if (typeof step.var !== 'string' || !step.var.trim()) {
-        throw new Error(
-          'Each Extract Rules step must include a non-empty "var".'
-        );
-      }
-      if (typeof step.regex !== 'string' || !step.regex.trim()) {
-        throw new Error(
-          'Each Extract Rules step must include a non-empty "regex".'
-        );
-      }
-      if (step.sources != null && !Array.isArray(step.sources)) {
-        throw new Error('If provided, "sources" must be an array.');
-      }
-      // Support slash-form regex: "/pattern/flags"
-      const m = step.regex.match(/^\/(.*)\/([a-z]*)$/);
-      if (m) {
-        step.regex = m[1];
-        const fParsed = sanitizeFlags(m[2]);
-        if (fParsed) {
-          step.flags = step.flags
-            ? sanitizeFlags(String(step.flags) + fParsed)
-            : fParsed;
-        }
-      }
-      // Validate flags if provided
-      if (step.flags !== undefined) {
-        step.flags = sanitizeFlags(step.flags);
-      }
-    }
-    return parsed;
-  }
-
-  // Shorthand mode (human-friendly): one rule per line.
-  // Supports:
-  //   url = xpath('...') | srcsetBest
-  //   url = qs('selector@attr') | srcsetBest
-  //   url = closest('closestSelector', 'selector', 'attr') | srcsetBest
-  //   xpath('...') || qs('...') || closest('...') | srcsetBest
-  const steps = [];
-  const lines = raw.split(/\r?\n/);
-  for (let i = 0; i < lines.length; i++) {
-    const original = lines[i];
-    let line = original.trim();
-    if (!line) continue;
-    if (line.startsWith('#') || line.startsWith('//')) continue;
-
-    // Optional mode via pipe
-    let mode = null;
-    const pipeIdx = line.lastIndexOf('|');
-    if (pipeIdx !== -1) {
-      const rhs = line.slice(pipeIdx + 1).trim();
-      const lhs = line.slice(0, pipeIdx).trim();
-      if (rhs === 'srcsetBest') {
-        mode = rhs;
-        line = lhs;
-      }
-    }
-
-    // Optional assignment
-    let varName = 'url';
-    const eqIdx = line.indexOf('=');
-    let exprPart = line;
-    if (eqIdx !== -1) {
-      varName = line.slice(0, eqIdx).trim();
-      exprPart = line.slice(eqIdx + 1).trim();
-    }
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(varName)) {
-      throw new Error(
-        `Invalid variable name on line ${
-          i + 1
-        }. Use letters/numbers/underscore (e.g. url, videoId).`
-      );
-    }
-
-    // Optional regex override via '~ <regex>' (quotes optional)
-    let regexString = '(.+)';
-    let regexFlags = undefined;
-    const tildeIdx = exprPart.lastIndexOf('~');
-    if (tildeIdx !== -1) {
-      const regexPart = exprPart.slice(tildeIdx + 1).trim();
-      exprPart = exprPart.slice(0, tildeIdx).trim();
-      if (!regexPart) {
-        throw new Error(`Missing regex after '~' on line ${i + 1}.`);
-      }
-      if (
-        (regexPart.startsWith('"') && regexPart.endsWith('"')) ||
-        (regexPart.startsWith("'") && regexPart.endsWith("'"))
-      ) {
-        regexString = regexPart.slice(1, -1);
-      } else {
-        regexString = regexPart;
-      }
-      // Allow slash-form with flags in shorthand: /pattern/flags
-      const m = regexString.match(/^\/(.*)\/([a-z]*)$/);
-      if (m) {
-        regexString = m[1];
-        regexFlags = sanitizeFlags(m[2]);
-      }
-      if (!regexString) {
-        throw new Error(`Empty regex after '~' on line ${i + 1}.`);
-      }
-    }
-
-    // Support fallbacks via ||
-    const exprsRaw = exprPart
-      .split('||')
-      .map(s => s.trim())
-      .filter(Boolean);
-    const exprs = [];
-    for (const s of exprsRaw) {
-      // xpath('...') → source:{ type:'xpath', expr: '...' }
-      if (/^xpath\s*\(/i.test(s)) {
-        const inner = s.replace(/^xpath\s*\(/i, '').replace(/\)\s*$/, '');
-        let expr = inner.trim();
-        if (
-          (expr.startsWith('"') && expr.endsWith('"')) ||
-          (expr.startsWith("'") && expr.endsWith("'"))
-        ) {
-          expr = expr.slice(1, -1);
-        }
-        exprs.push({ kind: 'xpath', expr });
-        continue;
-      }
-
-      // qs('selector@attr') → source:{ type:'cssQueryAttr', selector, name }
-      if (/^qs\s*\(/i.test(s)) {
-        const inner = s.replace(/^qs\s*\(/i, '').replace(/\)\s*$/, '');
-        let selAttr = inner.trim();
-        if (
-          (selAttr.startsWith('"') && selAttr.endsWith('"')) ||
-          (selAttr.startsWith("'") && selAttr.endsWith("'"))
-        ) {
-          selAttr = selAttr.slice(1, -1);
-        }
-        const atIdx = selAttr.lastIndexOf('@');
-        if (atIdx === -1)
-          throw new Error(`qs(...) requires "selector@attr" on line ${i + 1}.`);
-        const selector = selAttr.slice(0, atIdx).trim();
-        const name = selAttr.slice(atIdx + 1).trim();
-        if (!selector || !name)
-          throw new Error(`Invalid qs(...) selector@attr on line ${i + 1}.`);
-        exprs.push({ kind: 'cssQueryAttr', selector, name });
-        continue;
-      }
-
-      // closest('closestSelector', 'selector', 'attr') → source:{ type:'closestQueryAttr', closest, selector, name }
-      if (/^closest\s*\(/i.test(s)) {
-        const m = s.match(
-          /^closest\s*\(\s*(['"])(.*?)\1\s*,\s*(['"])(.*?)\3\s*,\s*(['"])(.*?)\5\s*\)\s*$/i
-        );
-        if (!m)
-          throw new Error(
-            `closest(...) requires three quoted args on line ${i + 1}.`
-          );
-        const closestSel = m[2].trim();
-        const selector = m[4].trim();
-        const name = m[6].trim();
-        if (!closestSel || !selector || !name)
-          throw new Error(`Invalid closest(...) args on line ${i + 1}.`);
-        exprs.push({
-          kind: 'closestQueryAttr',
-          closest: closestSel,
-          selector,
-          name,
-        });
-        continue;
-      }
-
-      // Raw XPath string without wrapper
-      let rawXpath = s;
-      if (
-        (rawXpath.startsWith('"') && rawXpath.endsWith('"')) ||
-        (rawXpath.startsWith("'") && rawXpath.endsWith("'"))
-      ) {
-        rawXpath = rawXpath.slice(1, -1);
-      }
-      exprs.push({ kind: 'xpath', expr: rawXpath });
-    }
-
-    if (exprs.length === 0) {
-      throw new Error(`Missing XPath on line ${i + 1}.`);
-    }
-
-    steps.push({
-      var: varName,
-      regex: regexString,
-      mode,
-      flags: regexFlags,
-      sources: exprs.map(x => {
-        if (x.kind === 'xpath') return { type: 'xpath', expr: x.expr };
-        if (x.kind === 'cssQueryAttr')
-          return { type: 'cssQueryAttr', selector: x.selector, name: x.name };
-        if (x.kind === 'closestQueryAttr')
-          return {
-            type: 'closestQueryAttr',
-            closest: x.closest,
-            selector: x.selector,
-            name: x.name,
-          };
-        return { type: 'xpath', expr: String(x) };
-      }),
-    });
-  }
-
-  if (steps.length === 0) return null;
-  return steps;
-}
-
 async function handleSaveRule() {
   const name = els.ruleName.value.trim();
   const selector = els.ruleSelector.value.trim();
-  const urlTemplate = els.ruleUrlTemplate.value.trim();
-  let extract = null;
-  try {
-    extract = parseExtractInput(els.ruleExtract.value);
-  } catch (e) {
-    alert(e.message || String(e));
-    return;
-  }
-
   const userScript = (els.ruleUserScript.value || '').trim();
-
-  const apiRaw = els.ruleApi.value.trim();
-  let api = null;
-  if (apiRaw) {
-    try {
-      api = JSON.parse(apiRaw);
-      if (api && typeof api === 'object') {
-        if (!api.url || typeof api.url !== 'string') {
-          alert('API configuration must include a "url" string property.');
-          return;
-        }
-        // Validate optional fields
-        if (api.path !== undefined && typeof api.path !== 'string') {
-          alert('API "path" must be a string if provided.');
-          return;
-        }
-        if (api.headers !== undefined && typeof api.headers !== 'object') {
-          alert('API "headers" must be an object if provided.');
-          return;
-        }
-      } else {
-        alert('API configuration must be a JSON object.');
-        return;
-      }
-    } catch (err) {
-      alert('Invalid JSON in API configuration: ' + err.message);
-      return;
-    }
-  }
 
   // Parse domain fields
   const parseDomainsInput = input => {
@@ -1164,17 +863,9 @@ async function handleSaveRule() {
     return;
   }
 
-  // At least one mechanism must be provided to derive a URL:
-  // URL template, Extract Rules, API configuration, or Custom JavaScript.
-  const hasUserScript = !!userScript;
-  if (
-    !urlTemplate &&
-    (!extract || extract.length === 0) &&
-    !api &&
-    !hasUserScript
-  ) {
+  if (!userScript) {
     alert(
-      'Either URL template, Extract Rules, API configuration, or Custom JavaScript is required.'
+      'Custom JavaScript is required. Use returnURL(url) or returnElement(el).'
     );
     return;
   }
@@ -1189,13 +880,13 @@ async function handleSaveRule() {
         ...rules[index],
         name,
         selector,
-        urlTemplate,
-        extract,
         userScript: userScript || undefined,
-        api,
         allowDomains: allowDomains.length > 0 ? allowDomains : [],
         excludeDomains: excludeDomains.length > 0 ? excludeDomains : [],
       };
+      delete rules[index].urlTemplate;
+      delete rules[index].extract;
+      delete rules[index].api;
       delete rules[index].customJS;
     }
   } else {
@@ -1205,10 +896,7 @@ async function handleSaveRule() {
       name,
       enabled: true,
       selector,
-      urlTemplate,
-      extract,
       userScript: userScript || undefined,
-      api,
       allowDomains: allowDomains.length > 0 ? allowDomains : [],
       excludeDomains: excludeDomains.length > 0 ? excludeDomains : [],
     };
@@ -1234,47 +922,14 @@ async function handleTestRule() {
   // Gather rule from form
   const name = els.ruleName.value.trim() || 'Untitled Rule';
   const selector = els.ruleSelector.value.trim();
-  const urlTemplate = els.ruleUrlTemplate.value.trim();
-  let extract = null;
-  try {
-    extract = parseExtractInput(els.ruleExtract.value);
-  } catch (e) {
-    alert(e.message || String(e));
-    return;
-  }
-
   const userScript = (els.ruleUserScript.value || '').trim();
-  // Parse minimal API config for testing, if provided
-  let api = null;
-  const apiRaw = els.ruleApi.value.trim();
-  if (apiRaw) {
-    try {
-      api = JSON.parse(apiRaw);
-      if (api && typeof api === 'object') {
-        if (!api.url || typeof api.url !== 'string') {
-          alert('API configuration must include a "url" string property.');
-          return;
-        }
-        if (api.path !== undefined && typeof api.path !== 'string') {
-          alert('API "path" must be a string if provided.');
-          return;
-        }
-        if (api.headers !== undefined && typeof api.headers !== 'object') {
-          alert('API "headers" must be an object if provided.');
-          return;
-        }
-      } else {
-        alert('API configuration must be a JSON object.');
-        return;
-      }
-    } catch (err) {
-      alert('Invalid JSON in API configuration: ' + err.message);
-      return;
-    }
-  }
 
   if (!selector) {
     alert('CSS selector is required to test the rule.');
+    return;
+  }
+  if (!userScript) {
+    alert('Custom JavaScript is required to test the rule.');
     return;
   }
 
@@ -1297,10 +952,7 @@ async function handleTestRule() {
       rule: {
         name,
         selector,
-        urlTemplate,
-        extract,
         userScript: userScript || undefined,
-        api,
       },
     };
     const response = await new Promise((resolve, reject) => {

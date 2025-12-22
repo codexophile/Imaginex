@@ -563,64 +563,16 @@
               </div>
 
               <div class="form-group">
-                <label for="ruleUrlTemplate">URL Template</label>
-                <input type="text" id="ruleUrlTemplate" placeholder="e.g., https://example.com/{id}/image.jpg" />
-                <div class="help-text">
-                  URL template with placeholders like {videoId}, {id}, {src}, {href}.
-                  To return a full URL, set this to <code>{url}</code> and extract a <code>url</code> variable.
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="ruleExtract">Extract Rules (JSON or XPath shorthand) (Optional)</label>
-                <textarea id="ruleExtract" spellcheck="false"
-                  placeholder='// JSON example\n[\n  {\n    "var": "videoId",\n    "regex": "\\/vi(?:_webp)?\\/([^\\/]+)",\n    "sources": [{"type":"src"},{"type":"href"}]\n  }\n]\n\n# XPath shorthand example (one per line)\nurl = xpath("ancestor::div[contains(@class,\"relative\")][1]//picture/source[@type=\"image/webp\"]/@data-srcset") | srcsetBest\nurl = xpath("ancestor::div[contains(@class,\"relative\")][1]//picture/img/@src")'></textarea>
-                <div class="help-text">
-                  Manifest V3 blocks running user-provided JavaScript (<code>unsafe-eval</code>), so rules use CSP-safe
-                  extractors.
-                  Provide either a JSON array of extract steps, or shorthand (one per line): XPath,
-                  <code>qs("selector@attr")</code>, or <code>closest("closestSelector", "selector", "attr")</code>.
-                  Each step reads from one or more sources and applies a regex.
-                  The first capture group becomes the variable value.
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="ruleApi">API Configuration (JSON) (Optional)</label>
-                <textarea id="ruleApi" spellcheck="false"
-                  placeholder='{\n  "url": "https://api.example.com?id={extractedVar}&key={settings.apiKeyName}",\n  "path": "data.image.url",\n  "headers": {"Authorization": "Bearer {settings.token}"}\n}'></textarea>
-                <div class="help-text">
-                  For rules that fetch images from external APIs (YouTube profiles, Twitter, etc).
-                  <code>url</code>: API endpoint with placeholders. <code>path</code>: JSON path to extract from
-                  response
-                  (optional). <code>headers</code>: Custom headers (optional).
-                  Use <code>{settings.keyName}</code> to reference API keys stored in the API Keys section.
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="ruleUserScript">Custom JavaScript (Advanced) (Optional)</label>
+                <label for="ruleUserScript">Custom JavaScript</label>
                 <textarea id="ruleUserScript" spellcheck="false"
-                  placeholder='// Example:\n// returnURL("https://example.com/highres.jpg");\n// Access DOM directly or use ctx variables.'></textarea>
+                  placeholder='// Call one of:\n// returnURL("https://example.com/highres.jpg");\n// returnElement(document.querySelector("img"));\n// You have access to: ctx (selector, src, href), and trigger (matched element).'></textarea>
                 <div class="help-text">
-                  Executes user-provided JavaScript in a safe user script world after a match. Provide a final image URL
-                  by
-                  calling
-                  <code>returnURL(url)</code>. The script runs on the page and can read DOM. Context variables are
-                  available
-                  in
-                  Context includes <code>ctx</code> and <code>trigger</code> (the matched element).
-                  <code>ctx</code> provides <code>selector</code>, <code>src</code>, <code>href</code>, and extracted
-                  variables; <code>trigger</code> is a direct DOM reference to the element caught by your CSS selector.
-                  You can return either a URL via <code>returnURL(url)</code> or an element via
-                  <code>returnElement(el)</code>.
-                  If you return an element (e.g., an <code>&lt;img&gt;</code> or <code>&lt;picture&gt;</code>), the
-                  extension
-                  will automatically select the highest quality source from <code>srcset</code> or fall back to
-                  <code>src</code>.
-                  Requires the <code>userScripts</code> permission; Chrome may prompt once.
+                  Provide a URL via <code>returnURL(url)</code> or an element via <code>returnElement(el)</code>.
+                  The script runs in a safe user script world with access to <code>ctx</code> and <code>trigger</code>.
                 </div>
               </div>
+
+
 
               <div class="form-group">
                 <label for="ruleAllowDomains">Allowed Domains (Optional)</label>
