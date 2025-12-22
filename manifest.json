@@ -34,7 +34,7 @@
   },
   "options_page": "options.html",
   "oauth2": {
-    "client_id": "YOUR_CLIENT_ID.apps.googleusercontent.com",
+    "client_id": "1054967656600-j262rupqi415tdqv4c0dmjhfkb6rlbpd.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/drive.appdata"
     ]

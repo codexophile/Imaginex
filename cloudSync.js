@@ -1,48 +1,115 @@
 // cloudSync.js
-// Google Drive sync for extension settings - no Firebase, no external dependencies
+// Google Drive sync for extension settings
+// Vivaldi-friendly auth via chrome.identity.launchWebAuthFlow (Web OAuth client)
 
 const SETTINGS_FILENAME = 'imaginex-settings.json';
 let cachedFileId = null;
+let cachedToken = null;
+let cachedTokenExpiry = 0; // epoch ms
+
+// Web OAuth Client (implicit flow)
+// Provided by user: Web client created in Google Cloud console
+const WEB_CLIENT_ID =
+  '1054967656600-j262rupqi415tdqv4c0dmjhfkb6rlbpd.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 
 // Log once when module loads
 console.info('[Imaginex] Drive sync module loaded');
+
+function buildOAuthUrls(interactive = true) {
+  const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
+  const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  authUrl.searchParams.set('response_type', 'token');
+  authUrl.searchParams.set('client_id', WEB_CLIENT_ID);
+  authUrl.searchParams.set('redirect_uri', redirectUri);
+  authUrl.searchParams.set('scope', DRIVE_SCOPE);
+  authUrl.searchParams.set('include_granted_scopes', 'true');
+  authUrl.searchParams.set(
+    'prompt',
+    interactive ? 'consent' : 'select_account'
+  );
+  return { authUrl, redirectUri };
+}
+
+export function getOAuthDebugInfo() {
+  const { authUrl, redirectUri } = buildOAuthUrls(true);
+  return {
+    extensionId: chrome.runtime.id,
+    clientId: WEB_CLIENT_ID,
+    redirectUri,
+    scope: DRIVE_SCOPE,
+    authUrl: authUrl.toString(),
+  };
+}
 
 export function isCloudConfigured() {
   try {
     const mf = chrome.runtime.getManifest?.() || {};
     const hasIdentity =
       Array.isArray(mf.permissions) && mf.permissions.includes('identity');
-    const oauth = mf.oauth2 || {};
-    const clientId = oauth.client_id || '';
-    const scopes = oauth.scopes || [];
-    const hasDriveScope = scopes.includes(
-      'https://www.googleapis.com/auth/drive.appdata'
-    );
-    const clientLooksSet = clientId && !clientId.startsWith('YOUR_CLIENT_ID');
-    return hasIdentity && hasDriveScope && clientLooksSet;
+    // For Vivaldi, we rely on Web OAuth client; manifest oauth2 is optional
+    const webClientSet =
+      typeof WEB_CLIENT_ID === 'string' &&
+      WEB_CLIENT_ID.endsWith('.apps.googleusercontent.com');
+    return hasIdentity && webClientSet;
   } catch (_) {
     return false;
   }
 }
 
-function getAuthToken(interactive = false) {
+function parseFragmentParams(urlStr) {
+  try {
+    const u = new URL(urlStr);
+    const hash = u.hash.startsWith('#') ? u.hash.slice(1) : u.hash;
+    const params = new URLSearchParams(hash);
+    return params;
+  } catch (_) {
+    return new URLSearchParams('');
+  }
+}
+
+function getAuthToken(interactive = true) {
   if (!isCloudConfigured()) {
     return Promise.reject(
-      new Error(
-        'Cloud sync not configured: set oauth2 client_id and Drive appdata scope in manifest.json'
-      )
+      new Error('Cloud sync not configured: missing Web OAuth client')
     );
   }
+
+  const now = Date.now();
+  if (cachedToken && cachedTokenExpiry - 5000 > now) {
+    return Promise.resolve(cachedToken);
+  }
+
+  const { authUrl, redirectUri } = buildOAuthUrls(interactive);
+  console.info('[Imaginex] OAuth debug', {
+    clientId: WEB_CLIENT_ID,
+    redirectUri,
+    authUrl: authUrl.toString(),
+  });
+
   return new Promise((resolve, reject) => {
     try {
-      chrome.identity.getAuthToken({ interactive }, token => {
-        const err = chrome.runtime.lastError;
-        if (err || !token) {
-          reject(err || new Error('No auth token'));
-        } else {
-          resolve(token);
+      chrome.identity.launchWebAuthFlow(
+        { url: authUrl.toString(), interactive: true },
+        redirect => {
+          const err = chrome.runtime.lastError;
+          if (err) return reject(err);
+          if (!redirect) return reject(new Error('No redirect from OAuth'));
+          const params = parseFragmentParams(redirect);
+          const accessToken = params.get('access_token');
+          const expiresIn = Number(params.get('expires_in') || '0');
+          const errorDesc =
+            params.get('error_description') || params.get('error');
+          if (!accessToken) {
+            console.error('[Imaginex] OAuth failure', { errorDesc, redirect });
+            return reject(new Error(errorDesc || 'No access token'));
+          }
+          cachedToken = accessToken;
+          cachedTokenExpiry =
+            Date.now() + (expiresIn > 0 ? expiresIn * 1000 : 3600 * 1000);
+          resolve(accessToken);
         }
-      });
+      );
     } catch (e) {
       reject(e);
     }

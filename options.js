@@ -4,6 +4,8 @@ import {
   loadSettingsFromCloud,
   signIn,
   getCurrentUser,
+  isCloudConfigured,
+  getOAuthDebugInfo,
 } from './cloudSync.js';
 
 const SHORTCUT_FUNCTIONS = [
@@ -356,14 +358,22 @@ async function init() {
   applyTheme(s.theme);
   wireEvents();
   subscribe(onExternalChange);
-  // Disable cloud actions if not configured
-  try {
-    await signIn(false);
-  } catch (e) {
+  // Disable cloud actions only when manifest lacks OAuth config; allow interactive sign-in otherwise.
+  const configured =
+    typeof isCloudConfigured === 'function' && isCloudConfigured();
+  if (!configured) {
     if (els.cloudSaveBtn) els.cloudSaveBtn.disabled = true;
     if (els.cloudLoadBtn) els.cloudLoadBtn.disabled = true;
     if (els.cloudStatus)
-      els.cloudStatus.textContent = 'Cloud sync not configured (see README).';
+      els.cloudStatus.textContent =
+        'Cloud sync not configured (set oauth2.client_id).';
+  } else {
+    // Try silent token pre-warm; ignore failures so user can still click to sign in interactively.
+    try {
+      await signIn(false);
+    } catch (_) {
+      /* ignore */
+    }
   }
 }
 
@@ -452,7 +462,14 @@ function wireEvents() {
         await saveSettingsToCloud(settings);
         els.cloudStatus.textContent = 'Saved to cloud.';
       } catch (e) {
-        els.cloudStatus.textContent = 'Cloud save failed: ' + (e?.message || e);
+        const dbg =
+          typeof getOAuthDebugInfo === 'function' ? getOAuthDebugInfo() : null;
+        const extra = dbg
+          ? ` (client: ${dbg.clientId}, redirect: ${dbg.redirectUri})`
+          : '';
+        els.cloudStatus.textContent =
+          'Cloud save failed: ' + (e?.message || e) + extra;
+        console.error('[Imaginex] Cloud save failed', { error: e, debug: dbg });
       }
       setTimeout(() => {
         els.cloudStatus.textContent = '';
