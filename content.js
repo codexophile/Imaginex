@@ -1222,6 +1222,9 @@
       'mouseenter',
       function (event) {
         const target = event.target;
+        if (!(target instanceof Element)) {
+          return;
+        }
 
         // Handle IMG elements as before
         if (target.tagName === 'IMG') {
@@ -1275,6 +1278,10 @@
     document.addEventListener(
       'mouseleave',
       function (event) {
+        if (!(event.target instanceof Element)) {
+          return;
+        }
+
         if (event.target.tagName === 'IMG') {
           handleImageMouseLeave(event);
         } else if (
@@ -1407,6 +1414,11 @@
 
   // Extract URL from background-image CSS property
   function getBackgroundImageUrl(element) {
+    if (!(element instanceof Element)) {
+      console.warn('Expected an Element, but received:', element);
+      return null;
+    }
+
     const style = window.getComputedStyle(element);
     const bgImage = style.backgroundImage;
 
