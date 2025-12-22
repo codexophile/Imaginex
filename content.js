@@ -324,83 +324,7 @@
     return null;
   }
 
-  function getSourceValue(element, source) {
-    if (!source || !source.type) return null;
-    try {
-      switch (source.type) {
-        case 'src':
-          return (
-            element.currentSrc ||
-            element.src ||
-            element.getAttribute?.('src') ||
-            null
-          );
-        case 'href': {
-          return (
-            element.href ||
-            element.getAttribute?.('href') ||
-            closestDeep(element, 'a')?.href ||
-            null
-          );
-        }
-        case 'attr':
-          return source.name
-            ? element.getAttribute?.(source.name) || null
-            : null;
-        case 'closestAttr': {
-          if (!source.selector || !source.name) return null;
-          const closest = closestDeep(element, source.selector);
-          if (!closest) return null;
-          return (
-            closest.getAttribute?.(source.name) || closest[source.name] || null
-          );
-        }
-        case 'closestQueryAttr': {
-          // Find closest ancestor, then querySelector within it, then read attribute/property.
-          // Useful for extracting from sibling structures like: <a ...></a> next to <picture>...</picture>
-          if (!source.closest || !source.selector || !source.name) return null;
-          const root = closestDeep(element, source.closest);
-          if (!root) return null;
-          const target = root.querySelector?.(source.selector);
-          if (!target) return null;
-          return (
-            target.getAttribute?.(source.name) || target[source.name] || null
-          );
-        }
-        case 'cssQueryAttr': {
-          // Query within the matched element, then read attribute/property.
-          if (!source.selector || !source.name) return null;
-          const root = source.closest
-            ? closestDeep(element, source.closest)
-            : element;
-          const target = root?.querySelector?.(source.selector);
-          if (!target) return null;
-          return (
-            target.getAttribute?.(source.name) || target[source.name] || null
-          );
-        }
-        case 'xpath': {
-          if (!source.expr) return null;
-          if (typeof document === 'undefined' || !document.evaluate)
-            return null;
-          const expr = String(source.expr);
-          // Evaluate relative to the matched element.
-          const result = document.evaluate(
-            expr,
-            element,
-            null,
-            XPathResult.STRING_TYPE,
-            null
-          );
-          return result ? result.stringValue || null : null;
-        }
-        default:
-          return null;
-      }
-    } catch (_) {
-      return null;
-    }
-  }
+  // Legacy extractor helpers removed (css/xpath/query attr resolution).
 
   function pickBestFromSrcsetString(srcset) {
     const raw = (srcset || '').toString().trim();
@@ -513,79 +437,9 @@
     return null;
   }
 
-  function extractVariables(element, rule) {
-    const variables = {};
+  // Legacy variable extraction removed.
 
-    // Built-in placeholders
-    variables.src =
-      element.currentSrc || element.src || element.getAttribute?.('src') || '';
-    variables.href =
-      element.closest?.('a')?.href ||
-      element.href ||
-      element.getAttribute?.('href') ||
-      '';
-
-    // CSP-safe extraction rules
-    const extract = rule && rule.extract;
-    if (Array.isArray(extract)) {
-      for (const ex of extract) {
-        if (!ex || !ex.var || !ex.regex) continue;
-        const sources =
-          Array.isArray(ex.sources) && ex.sources.length
-            ? ex.sources
-            : [{ type: 'src' }, { type: 'href' }];
-        let re;
-        try {
-          re = new RegExp(ex.regex, ex.flags || undefined);
-        } catch (_) {
-          continue;
-        }
-        for (const source of sources) {
-          const value = getSourceValue(element, source);
-          if (!value) continue;
-          const m = String(value).match(re);
-          if (m) {
-            let v = m[1] ?? m[0];
-            if (ex.mode === 'srcsetBest') {
-              v = pickBestFromSrcsetString(v) ?? v;
-            }
-            variables[ex.var] = v;
-            break;
-          }
-        }
-      }
-    }
-
-    // Back-compat: if no extractor provided and this looks like YouTube, try to extract videoId
-    if (!variables.videoId && typeof rule?.urlTemplate === 'string') {
-      const t = rule.urlTemplate;
-      const looksYouTube =
-        t.includes('i.ytimg.com') &&
-        (t.includes('{videoId}') || t.includes('{videoid}'));
-      if (looksYouTube) {
-        const src = variables.src || '';
-        const href = variables.href || '';
-        const m =
-          src.match(/\/vi(?:_webp)?\/([^\/]+)/) ||
-          href.match(/[?&]v=([^&]+)/) ||
-          href.match(/\/shorts\/([^?\/]+)/);
-        if (m) variables.videoId = m[1];
-      }
-    }
-
-    return variables;
-  }
-
-  function applyTemplate(template, variables) {
-    if (!template) return null;
-    const url = String(template).replace(/\{([^}]+)\}/g, (m, key) => {
-      if (Object.prototype.hasOwnProperty.call(variables, key)) {
-        return variables[key];
-      }
-      return m;
-    });
-    return url;
-  }
+  // Legacy template application removed.
 
   async function checkCustomRules(element) {
     if (!customRules || customRules.length === 0) {
@@ -607,15 +461,6 @@
         if (!matched) continue;
 
         console.log('Element matches custom rule:', rule.name, element);
-
-        if (rule.customJS) {
-          console.warn(
-            'Custom JS is not supported in MV3 (CSP blocks unsafe-eval). Use rule.extract instead.',
-            rule.name
-          );
-        }
-
-        const variables = extractVariables(element, rule);
 
         // Optional: execute Custom JavaScript regardless of API presence
         if (
@@ -639,7 +484,7 @@
               element.getAttribute?.('href') ||
               closestDeep(element, 'a')?.href ||
               null,
-            variables: variables,
+            variables: {},
             triggerSelector: `[data-imagus-trigger="${token}"]`,
           };
 
@@ -726,100 +571,7 @@
           } catch (_) {}
         }
 
-        // If rule has API config, fetch from external API
-        if (rule.api && rule.api.url) {
-          try {
-            // Check if extension context is still valid before making message calls
-            if (!chrome?.runtime?.sendMessage) {
-              console.warn('Extension context invalidated, skipping API fetch');
-              continue;
-            }
-
-            // Load settings to get API keys
-            const settingsData = await new Promise((resolve, reject) => {
-              try {
-                chrome.storage.local.get([SETTINGS_INTERNAL_KEY], result => {
-                  resolve(result[SETTINGS_INTERNAL_KEY] || {});
-                });
-              } catch (err) {
-                reject(err);
-              }
-            });
-            const apiKeys = settingsData.apiKeys || {};
-            // Substitute variables and settings in API URL and headers
-            const substituteVars = str => {
-              return String(str).replace(/\{([^}]+)\}/g, (m, key) => {
-                if (key.startsWith('settings.')) {
-                  const settingKey = key.slice(9);
-                  return apiKeys[settingKey] || m;
-                }
-                if (Object.prototype.hasOwnProperty.call(variables, key)) {
-                  return variables[key];
-                }
-                return m;
-              });
-            };
-
-            const apiUrl = substituteVars(rule.api.url);
-            if (apiUrl.includes('{')) {
-              console.warn('Unresolved placeholders in API URL:', apiUrl);
-              continue;
-            }
-
-            const headers = {};
-            if (rule.api.headers) {
-              for (const [k, v] of Object.entries(rule.api.headers)) {
-                headers[k] = substituteVars(v);
-              }
-            }
-
-            console.log('Fetching from API:', apiUrl);
-            const response = await chrome.runtime.sendMessage({
-              type: 'imagus:fetchApi',
-              url: apiUrl,
-              path: rule.api.path || null,
-              headers,
-            });
-
-            if (response && response.ok) {
-              const url = String(response.data);
-              if (url && !url.includes('{')) {
-                console.log('API returned URL:', url);
-                return url;
-              }
-            } else {
-              console.warn(
-                'API fetch failed:',
-                response?.error || 'Unknown error'
-              );
-            }
-          } catch (err) {
-            // Check if error is due to extension context invalidation
-            if (
-              err?.message?.includes('Extension context invalidated') ||
-              err?.message?.includes('sendMessage') ||
-              !chrome?.runtime?.sendMessage
-            ) {
-              console.warn('Extension context lost, skipping API fetch:', err);
-              continue;
-            }
-            console.error('Error fetching from API:', err);
-          }
-        }
-
-        if (rule.urlTemplate) {
-          const url = applyTemplate(rule.urlTemplate, variables);
-
-          if (url && url.includes('{')) {
-            console.warn('Not all placeholders replaced in URL template:', url);
-            continue;
-          }
-
-          if (url) {
-            console.log('Custom rule generated URL:', url);
-            return url;
-          }
-        }
+        // Legacy API and URL template handling removed.
       } catch (error) {
         console.error('Error checking custom rule:', rule.name, error);
       }
@@ -1625,8 +1377,6 @@
     try {
       const rule = msg.rule || {};
       const selector = rule.selector;
-      const urlTemplate = rule.urlTemplate || '';
-      const extract = rule.extract;
       const matches = selector
         ? Array.from(document.querySelectorAll(selector))
         : [];
@@ -1649,20 +1399,11 @@
       (async () => {
         const results = await Promise.all(
           matches.map(async el => {
-            let variables = {};
             let url = null;
-            let unresolvedPlaceholders = false;
             let error = null;
             try {
-              variables = extractVariables(el, { urlTemplate, extract });
-              if (!url && urlTemplate) {
-                url = applyTemplate(urlTemplate, variables);
-                unresolvedPlaceholders = url ? url.includes('{') : false;
-              }
-
-              // Try Custom JavaScript if no usable URL yet
+              // Execute Custom JavaScript for testing
               if (
-                (!url || unresolvedPlaceholders) &&
                 rule.userScript &&
                 typeof rule.userScript === 'string' &&
                 rule.userScript.trim()
@@ -1681,7 +1422,7 @@
                     el.getAttribute?.('href') ||
                     closestDeep(el, 'a')?.href ||
                     null,
-                  variables,
+                  variables: {},
                   triggerSelector: `[data-imagus-trigger="${token}"]`,
                 };
 
@@ -1772,13 +1513,11 @@
                 if (urlFromScript) {
                   if (/^https?:\/\//i.test(urlFromScript)) {
                     url = urlFromScript;
-                    unresolvedPlaceholders = false;
                     try {
                       el.removeAttribute('data-imagus-trigger');
                     } catch (_) {}
                   } else if (!urlFromScript.includes('{')) {
                     url = urlFromScript;
-                    unresolvedPlaceholders = false;
                     try {
                       el.removeAttribute('data-imagus-trigger');
                     } catch (_) {}
@@ -1789,59 +1528,12 @@
                   el.removeAttribute('data-imagus-trigger');
                 } catch (_) {}
               }
-
-              // Try API if still no usable URL and API provided
-              if (
-                (!url || unresolvedPlaceholders) &&
-                rule.api &&
-                rule.api.url
-              ) {
-                const settingsData = await new Promise(resolve => {
-                  chrome.storage.local.get([SETTINGS_INTERNAL_KEY], result => {
-                    resolve(result[SETTINGS_INTERNAL_KEY] || {});
-                  });
-                });
-                const apiKeys = settingsData.apiKeys || {};
-                const substituteVars = str =>
-                  String(str).replace(/\{([^}]+)\}/g, (m, key) => {
-                    if (key.startsWith('settings.')) {
-                      const settingKey = key.slice(9);
-                      return apiKeys[settingKey] || m;
-                    }
-                    if (Object.prototype.hasOwnProperty.call(variables, key)) {
-                      return variables[key];
-                    }
-                    return m;
-                  });
-
-                const apiUrl = substituteVars(rule.api.url);
-                const headers = {};
-                if (rule.api.headers) {
-                  for (const [k, v] of Object.entries(rule.api.headers)) {
-                    headers[k] = substituteVars(v);
-                  }
-                }
-                const response = await chrome.runtime.sendMessage({
-                  type: 'imagus:fetchApi',
-                  url: apiUrl,
-                  path: rule.api.path || null,
-                  headers,
-                });
-                if (response && response.ok) {
-                  const apiUrlResult = String(response.data);
-                  if (apiUrlResult && !apiUrlResult.includes('{')) {
-                    url = apiUrlResult;
-                    unresolvedPlaceholders = false;
-                  }
-                }
-              }
             } catch (e) {
               error = e.message || String(e);
             }
             return {
               url,
-              variables,
-              unresolvedPlaceholders,
+              variables: {},
               error,
               elementSummary: summarize(el),
             };
