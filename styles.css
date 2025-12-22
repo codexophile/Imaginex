@@ -8,6 +8,26 @@
   opacity: 1;
 }
 
+#image-enlarger-floating-spinner {
+  position: fixed;
+  z-index: 1000000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  pointer-events: none;
+}
+
+#image-enlarger-floating-spinner .image-enlarger-spinner-ring {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 4px solid rgba(0, 0, 0, 0.12);
+  border-top-color: rgba(0, 0, 0, 0.7);
+  animation: imagus-spin 0.9s linear infinite;
+}
+
 #image-enlarger-overlay img {
   /* Ensure smooth loading */
   transition: opacity 0.1s ease-in-out;
@@ -18,6 +38,11 @@
   #image-enlarger-overlay {
     background: #333;
     border-color: #555;
+  }
+
+  #image-enlarger-floating-spinner .image-enlarger-spinner-ring {
+    border-color: rgba(255, 255, 255, 0.15);
+    border-top-color: rgba(255, 255, 255, 0.8);
   }
 }
 
@@ -70,6 +95,12 @@ div[data-testid*='overlay']:empty {
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes imagus-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

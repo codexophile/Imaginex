@@ -2,6 +2,7 @@
   'use strict';
 
   let hoverOverlay = null;
+  let loadingSpinner = null;
   let currentImg = null;
   let currentTrigger = null;
   let hoverTimer = null;
@@ -153,6 +154,25 @@
     document.body.appendChild(overlay);
 
     return overlay;
+  }
+
+  function setOverlayLoading(isLoading) {
+    if (!loadingSpinner) {
+      if (!isLoading) return;
+      loadingSpinner = document.createElement('div');
+      loadingSpinner.id = 'image-enlarger-floating-spinner';
+      loadingSpinner.innerHTML =
+        '<div class="image-enlarger-spinner-ring"></div>';
+      document.body.appendChild(loadingSpinner);
+    }
+    loadingSpinner.style.display = isLoading ? 'flex' : 'none';
+  }
+
+  function positionSpinner(mouseX, mouseY) {
+    if (!loadingSpinner) return;
+    const offset = 12;
+    loadingSpinner.style.left = mouseX + offset + 'px';
+    loadingSpinner.style.top = mouseY + offset + 'px';
   }
 
   // Parse srcset attribute and return the best image source
@@ -671,6 +691,9 @@
     const bestDimensions = customUrl ? null : getBestImageDimensions(img);
 
     overlayImg.alt = img.alt || '';
+    overlayImg.style.opacity = '0';
+    setOverlayLoading(true);
+    positionSpinner(mouseX, mouseY);
 
     console.log(
       'Using image source for enlargement:',
@@ -719,10 +742,10 @@
 
     // Set a reasonable size immediately, position, then refine after load
     applySize(bestDimensions?.width || 0, bestDimensions?.height || 0);
-    // Avoid initial flicker: render hidden and position before showing
-    hoverOverlay.style.opacity = '0';
     hoverOverlay.style.display = 'block';
+    hoverOverlay.style.visibility = 'hidden';
     positionOverlay(hoverOverlay, mouseX, mouseY);
+    hoverOverlay.style.opacity = '0';
 
     // Handlers must be set before src assignment (cached images can load very fast)
     overlayImg.onload = () => {
@@ -730,7 +753,9 @@
       applySize(overlayImg.naturalWidth, overlayImg.naturalHeight);
       hoverOverlay.offsetHeight;
       positionOverlay(hoverOverlay, mouseX, mouseY);
-      // Reveal after image has loaded and overlay is sized/positioned
+      setOverlayLoading(false);
+      hoverOverlay.style.visibility = 'visible';
+      overlayImg.style.opacity = '1';
       hoverOverlay.style.opacity = '1';
     };
 
@@ -760,6 +785,9 @@
       applySize(overlayImg.naturalWidth, overlayImg.naturalHeight);
       hoverOverlay.offsetHeight;
       positionOverlay(hoverOverlay, mouseX, mouseY);
+      setOverlayLoading(false);
+      hoverOverlay.style.visibility = 'visible';
+      overlayImg.style.opacity = '1';
       hoverOverlay.style.opacity = '1';
     }
   }
@@ -828,7 +856,16 @@
   // Hide the enlarged image
   function hideEnlargedImage() {
     if (hoverOverlay) {
+      const overlayImg = hoverOverlay.querySelector('img');
+      if (overlayImg) {
+        overlayImg.onload = null;
+        overlayImg.onerror = null;
+        overlayImg.style.opacity = '0';
+      }
+      setOverlayLoading(false);
       hoverOverlay.style.display = 'none';
+      hoverOverlay.style.visibility = 'hidden';
+      hoverOverlay.style.opacity = '0';
     }
     // Also remove any visual indicators
     if (currentImg) {
@@ -1054,6 +1091,9 @@
       function (event) {
         const isActiveTrigger =
           event.target === currentImg || event.target === currentTrigger;
+        if (loadingSpinner && loadingSpinner.style.display === 'flex') {
+          positionSpinner(event.clientX, event.clientY);
+        }
         if (hoverOverlay && hoverOverlay.style.display === 'block') {
           if (isActiveTrigger) {
             positionOverlay(hoverOverlay, event.clientX, event.clientY);
