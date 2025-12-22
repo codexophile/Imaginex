@@ -144,27 +144,11 @@ const SETTINGS_DEFAULTS = Object.freeze({
       id: 'youtube-thumbnails',
       name: 'YouTube Video Thumbnails',
       enabled: true,
-      selector: 'a#thumbnail img[src*="i.ytimg.com"]',
+      selector:
+        ':is(yt-thumbnail-view-model, ytd-notification-renderer, ytd-rich-grid-media) img',
       allowDomains: ['youtube.com', '*.youtube.com', 'youtu.be'],
       excludeDomains: [],
-      urlTemplate: 'https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp',
-      extract: [
-        {
-          var: 'videoId',
-          regex: '\\/vi(?:_webp)?\\/([^\\/]+)',
-          sources: [{ type: 'src' }],
-        },
-        {
-          var: 'videoId',
-          regex: '[?&]v=([^&]+)',
-          sources: [{ type: 'href' }],
-        },
-        {
-          var: 'videoId',
-          regex: '\\/(?:shorts|embed)\\/([^?\\/]+)',
-          sources: [{ type: 'href' }],
-        },
-      ],
+      userScript: `/* globals ctx, trigger, returnURL */\n(() => {\n  const src = ctx.src || '';// image src\n  const href = ctx.href || trigger?.closest?.('a')?.href || '';// parent anchor\n  const findId = s => {\n    if (!s) return '';\n    const m =\n      s.match(/\\/(?:vi|vi_webp)\\/([A-Za-z0-9_-]{11})/) ||\n      s.match(/[?&]v=([A-Za-z0-9_-]{11})/) ||\n      s.match(/\\/(?:shorts|embed)\\/([A-Za-z0-9_-]{11})/);\n    return m ? m[1] : '';\n  };\n  const videoId = findId(src) || findId(href);\n  if (!videoId) return;\n  returnURL('https://i.ytimg.com/vi/' + videoId + '/maxresdefault.jpg');\n})();`,
     },
   ],
 });
