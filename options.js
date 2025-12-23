@@ -14,6 +14,16 @@ const SHORTCUT_FUNCTIONS = [
     name: 'Zoom to full resolution',
     description: 'Expand the hovered media to its original resolution.',
   },
+  {
+    id: 'zoomIn',
+    name: 'Zoom in',
+    description: 'Zoom in on the hovered media.',
+  },
+  {
+    id: 'zoomOut',
+    name: 'Zoom out',
+    description: 'Zoom out on the hovered media.',
+  },
 ];
 
 const MOUSE_BUTTON_LABELS = {

@@ -25,7 +25,15 @@
   // Shortcuts state
   let shortcutBindings = {
     zoomFullResolution: [null, null],
+    zoomIn: [null, null],
+    zoomOut: [null, null],
   };
+
+  // Zoom state
+  let currentZoomLevel = 1;
+  const zoomStep = 0.1; // 10% zoom per action
+  const minZoom = 0.5; // 50% minimum zoom
+  const maxZoom = 3; // 300% maximum zoom
 
   const SETTINGS_INTERNAL_KEY = '__settings_v1';
 
@@ -169,6 +177,7 @@
     lockedZoomOffsetX = 0;
     lockedZoomOffsetY = 0;
     lockedZoomDragging = false;
+    currentZoomLevel = 1; // Reset zoom level when exiting locked zoom mode
 
     hideLockedZoomBarrier();
 
@@ -258,6 +267,98 @@
     e.stopPropagation();
   }
 
+  function zoomIn() {
+    if (
+      !lockedZoomMode ||
+      !hoverOverlay ||
+      hoverOverlay.style.display !== 'block'
+    )
+      return;
+    const img = hoverOverlay.querySelector('img');
+    if (!img) return;
+
+    const newZoom = Math.min(currentZoomLevel + zoomStep, maxZoom);
+    if (newZoom === currentZoomLevel) return; // Already at max zoom
+
+    const scaleFactor = newZoom / currentZoomLevel;
+    const currentWidth = parseFloat(img.style.width || img.offsetWidth);
+    const currentHeight = parseFloat(img.style.height || img.offsetHeight);
+
+    img.style.width = currentWidth * scaleFactor + 'px';
+    img.style.height = currentHeight * scaleFactor + 'px';
+
+    // If in locked zoom mode, apply the zoom
+    if (lockedZoomMode) {
+      // Adjust the transform to maintain center position while zooming
+      const overlayWidth = hoverOverlay.offsetWidth;
+      const overlayHeight = hoverOverlay.offsetHeight;
+      const newImgWidth = currentWidth * scaleFactor;
+      const newImgHeight = currentHeight * scaleFactor;
+      const overflowX = Math.max(0, newImgWidth - overlayWidth);
+      const overflowY = Math.max(0, newImgHeight - overlayHeight);
+      // Keep the current center point in view by adjusting offsets proportionally
+      const centerX = lockedZoomOffsetX + overlayWidth / 2;
+      const centerY = lockedZoomOffsetY + overlayHeight / 2;
+      lockedZoomOffsetX = Math.max(
+        -overflowX,
+        Math.min(centerX - overlayWidth / 2, 0)
+      );
+      lockedZoomOffsetY = Math.max(
+        -overflowY,
+        Math.min(centerY - overlayHeight / 2, 0)
+      );
+      img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px)`;
+    }
+
+    currentZoomLevel = newZoom;
+  }
+
+  function zoomOut() {
+    if (
+      !lockedZoomMode ||
+      !hoverOverlay ||
+      hoverOverlay.style.display !== 'block'
+    )
+      return;
+    const img = hoverOverlay.querySelector('img');
+    if (!img) return;
+
+    const newZoom = Math.max(currentZoomLevel - zoomStep, minZoom);
+    if (newZoom === currentZoomLevel) return; // Already at min zoom
+
+    const scaleFactor = newZoom / currentZoomLevel;
+    const currentWidth = parseFloat(img.style.width || img.offsetWidth);
+    const currentHeight = parseFloat(img.style.height || img.offsetHeight);
+
+    img.style.width = currentWidth * scaleFactor + 'px';
+    img.style.height = currentHeight * scaleFactor + 'px';
+
+    // If in locked zoom mode, apply the zoom
+    if (lockedZoomMode) {
+      // Adjust the transform to maintain center position while zooming
+      const overlayWidth = hoverOverlay.offsetWidth;
+      const overlayHeight = hoverOverlay.offsetHeight;
+      const newImgWidth = currentWidth * scaleFactor;
+      const newImgHeight = currentHeight * scaleFactor;
+      const overflowX = Math.max(0, newImgWidth - overlayWidth);
+      const overflowY = Math.max(0, newImgHeight - overlayHeight);
+      // Keep the current center point in view by adjusting offsets proportionally
+      const centerX = lockedZoomOffsetX + overlayWidth / 2;
+      const centerY = lockedZoomOffsetY + overlayHeight / 2;
+      lockedZoomOffsetX = Math.max(
+        -overflowX,
+        Math.min(centerX - overlayWidth / 2, 0)
+      );
+      lockedZoomOffsetY = Math.max(
+        -overflowY,
+        Math.min(centerY - overlayHeight / 2, 0)
+      );
+      img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px)`;
+    }
+
+    currentZoomLevel = newZoom;
+  }
+
   function applySettingsFromStorage(raw) {
     if (!raw || typeof raw !== 'object') return;
     if (typeof raw.hoverDelay === 'number') HOVER_DELAY = raw.hoverDelay;
@@ -307,6 +408,16 @@
         console.log(
           'zoomFullResolution is NOT an array:',
           raw.shortcuts.zoomFullResolution
+        );
+      }
+      if (Array.isArray(raw.shortcuts.zoomIn)) {
+        shortcutBindings.zoomIn = raw.shortcuts.zoomIn.filter(
+          b => b && typeof b === 'object' && b.type && b.combo
+        );
+      }
+      if (Array.isArray(raw.shortcuts.zoomOut)) {
+        shortcutBindings.zoomOut = raw.shortcuts.zoomOut.filter(
+          b => b && typeof b === 'object' && b.type && b.combo
         );
       }
       console.log('Final shortcutBindings:', JSON.stringify(shortcutBindings));
@@ -958,6 +1069,9 @@
       hoverOverlay = createOverlay();
     }
 
+    // Reset zoom level when showing a new image
+    currentZoomLevel = 1;
+
     const overlayImg = hoverOverlay.querySelector('img');
     const bestImageSource = customUrl || getBestImageSource(img);
     const bestDimensions = customUrl ? null : getBestImageDimensions(img);
@@ -1324,6 +1438,13 @@
       3: 'MouseBack',
       4: 'MouseForward',
     };
+
+    // Handle wheel events
+    if (event.type === 'wheel') {
+      const dir = event.deltaY < 0 ? 'WheelUp' : 'WheelDown';
+      return { type: 'mouse', combo: dir };
+    }
+
     const buttonLabel =
       MOUSE_BUTTON_LABELS[event.button] || `MouseButton${event.button}`;
     return { type: 'mouse', combo: buttonLabel };
@@ -1493,6 +1614,45 @@
             return;
           }
         }
+
+        const zoomInBindings = shortcutBindings.zoomIn || [];
+        const isZoomInShortcut = zoomInBindings.some(b =>
+          bindingMatchesKeyboardEvent(b, event)
+        );
+        if (isZoomInShortcut) {
+          if (
+            lockedZoomMode &&
+            hoverOverlay &&
+            hoverOverlay.style.display === 'block'
+          ) {
+            zoomIn();
+            event.preventDefault();
+            if (event.stopImmediatePropagation)
+              event.stopImmediatePropagation();
+            event.stopPropagation();
+            return;
+          }
+        }
+
+        const zoomOutBindings = shortcutBindings.zoomOut || [];
+        const isZoomOutShortcut = zoomOutBindings.some(b =>
+          bindingMatchesKeyboardEvent(b, event)
+        );
+        if (isZoomOutShortcut) {
+          if (
+            lockedZoomMode &&
+            hoverOverlay &&
+            hoverOverlay.style.display === 'block'
+          ) {
+            zoomOut();
+            event.preventDefault();
+            if (event.stopImmediatePropagation)
+              event.stopImmediatePropagation();
+            event.stopPropagation();
+            return;
+          }
+        }
+
         if (event.key === 'Escape') {
           hideEnlargedImage();
         }
@@ -1504,6 +1664,48 @@
     document.addEventListener('mousedown', handleLockedZoomMouseDown, true);
     document.addEventListener('mousemove', handleLockedZoomMouseMove, true);
     document.addEventListener('mouseup', handleLockedZoomMouseUp, true);
+
+    // Wheel zoom handlers
+    document.addEventListener(
+      'wheel',
+      function (event) {
+        if (
+          !lockedZoomMode ||
+          !hoverOverlay ||
+          hoverOverlay.style.display !== 'block'
+        )
+          return;
+
+        const zoomInBindings = shortcutBindings.zoomIn || [];
+        const isZoomInShortcut = zoomInBindings.some(b =>
+          bindingMatchesMouseEvent(b, event)
+        );
+
+        const zoomOutBindings = shortcutBindings.zoomOut || [];
+        const isZoomOutShortcut = zoomOutBindings.some(b =>
+          bindingMatchesMouseEvent(b, event)
+        );
+
+        if (isZoomInShortcut) {
+          zoomIn();
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+
+        if (isZoomOutShortcut) {
+          zoomOut();
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+
+        // Prevent page scrolling during locked zoom mode
+        event.preventDefault();
+        event.stopPropagation();
+      },
+      { passive: false, capture: true }
+    );
 
     // Double-click to toggle locked zoom
     document.addEventListener(
