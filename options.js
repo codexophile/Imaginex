@@ -358,7 +358,7 @@ async function init() {
   applyTheme(s.theme);
   wireEvents();
   subscribe(onExternalChange);
-  // Disable cloud actions only when manifest lacks OAuth config; allow interactive sign-in otherwise.
+  // Disable cloud actions only when manifest lacks OAuth config
   const configured =
     typeof isCloudConfigured === 'function' && isCloudConfigured();
   if (!configured) {
@@ -367,14 +367,8 @@ async function init() {
     if (els.cloudStatus)
       els.cloudStatus.textContent =
         'Cloud sync not configured (set oauth2.client_id).';
-  } else {
-    // Try silent token pre-warm; ignore failures so user can still click to sign in interactively.
-    try {
-      await signIn(false);
-    } catch (_) {
-      /* ignore */
-    }
   }
+  // OAuth flow will only trigger when user clicks Save/Load buttons
 }
 
 function bindValues(s) {
