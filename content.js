@@ -156,14 +156,16 @@
       // Show the image at its natural size inside the fixed overlay
       img.style.width = img.naturalWidth + 'px';
       img.style.height = img.naturalHeight + 'px';
-      // img.style.objectFit = 'none';
+      img.style.objectFit = 'none';
+      img.style.setProperty('max-width', 'none', 'important');
+      img.style.setProperty('max-height', 'none', 'important');
+      img.style.transformOrigin = '0 0';
 
-      // Start centered: compute initial offsets so the overlay shows the image center
-      const overflowX = Math.max(0, img.naturalWidth - overlayW);
-      const overflowY = Math.max(0, img.naturalHeight - overlayH);
-      lockedZoomOffsetX = -overflowX / 2;
-      lockedZoomOffsetY = -overflowY / 2;
-      img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px)`;
+      // Start centered: compute initial pan so the image center is under the overlay center
+      lockedZoomOffsetX = (overlayW - img.naturalWidth) / 2;
+      lockedZoomOffsetY = (overlayH - img.naturalHeight) / 2;
+      currentZoomLevel = 1;
+      img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px) scale(${currentZoomLevel})`;
     }
 
     updateLockedZoomBorder();
@@ -190,6 +192,9 @@
         img.style.width = '';
         img.style.height = '';
         img.style.objectFit = '';
+        img.style.removeProperty('max-width');
+        img.style.removeProperty('max-height');
+        img.style.transformOrigin = '';
       }
     }
     hideLockedZoomBorder();
@@ -236,7 +241,7 @@
 
     const img = hoverOverlay.querySelector('img');
     if (img) {
-      img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px)`;
+      img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px) scale(${currentZoomLevel})`;
     }
 
     lockedZoomDragStartX = e.clientX;
@@ -265,33 +270,16 @@
     const newZoom = Math.min(currentZoomLevel + zoomStep, maxZoom);
     if (newZoom === currentZoomLevel) return; // Already at max zoom
 
-    const scaleFactor = newZoom / currentZoomLevel;
-    const currentWidth = parseFloat(img.style.width || img.offsetWidth);
-    const currentHeight = parseFloat(img.style.height || img.offsetHeight);
+    // Keep anchor point at overlay center stable across zoom (translate then scale)
+    const overlayWidth = hoverOverlay.offsetWidth;
+    const overlayHeight = hoverOverlay.offsetHeight;
+    const anchorX = (overlayWidth / 2 - lockedZoomOffsetX) / currentZoomLevel;
+    const anchorY = (overlayHeight / 2 - lockedZoomOffsetY) / currentZoomLevel;
 
-    img.style.width = currentWidth * scaleFactor + 'px';
-    img.style.height = currentHeight * scaleFactor + 'px';
-
-    // If in locked zoom mode, apply the zoom centered on current viewport
-    if (lockedZoomMode) {
-      const overlayWidth = hoverOverlay.offsetWidth;
-      const overlayHeight = hoverOverlay.offsetHeight;
-      const newImgWidth = currentWidth * scaleFactor;
-      const newImgHeight = currentHeight * scaleFactor;
-
-      // Keep the overlay center fixed using affine update:
-      // newOffset = scaleFactor * oldOffset + (1 - scaleFactor) * overlayCenter
-      lockedZoomOffsetX =
-        scaleFactor * lockedZoomOffsetX +
-        (1 - scaleFactor) * (overlayWidth / 2);
-      lockedZoomOffsetY =
-        scaleFactor * lockedZoomOffsetY +
-        (1 - scaleFactor) * (overlayHeight / 2);
-
-      img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px)`;
-    }
-
+    lockedZoomOffsetX = overlayWidth / 2 - anchorX * newZoom;
+    lockedZoomOffsetY = overlayHeight / 2 - anchorY * newZoom;
     currentZoomLevel = newZoom;
+    img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px) scale(${currentZoomLevel})`;
   }
 
   function zoomOut() {
@@ -307,33 +295,16 @@
     const newZoom = Math.max(currentZoomLevel - zoomStep, minZoom);
     if (newZoom === currentZoomLevel) return; // Already at min zoom
 
-    const scaleFactor = newZoom / currentZoomLevel;
-    const currentWidth = parseFloat(img.style.width || img.offsetWidth);
-    const currentHeight = parseFloat(img.style.height || img.offsetHeight);
+    // Keep anchor point at overlay center stable across zoom (translate then scale)
+    const overlayWidth = hoverOverlay.offsetWidth;
+    const overlayHeight = hoverOverlay.offsetHeight;
+    const anchorX = (overlayWidth / 2 - lockedZoomOffsetX) / currentZoomLevel;
+    const anchorY = (overlayHeight / 2 - lockedZoomOffsetY) / currentZoomLevel;
 
-    img.style.width = currentWidth * scaleFactor + 'px';
-    img.style.height = currentHeight * scaleFactor + 'px';
-
-    // If in locked zoom mode, apply the zoom centered on current viewport
-    if (lockedZoomMode) {
-      const overlayWidth = hoverOverlay.offsetWidth;
-      const overlayHeight = hoverOverlay.offsetHeight;
-      const newImgWidth = currentWidth * scaleFactor;
-      const newImgHeight = currentHeight * scaleFactor;
-
-      // Keep the overlay center fixed using affine update:
-      // newOffset = scaleFactor * oldOffset + (1 - scaleFactor) * overlayCenter
-      lockedZoomOffsetX =
-        scaleFactor * lockedZoomOffsetX +
-        (1 - scaleFactor) * (overlayWidth / 2);
-      lockedZoomOffsetY =
-        scaleFactor * lockedZoomOffsetY +
-        (1 - scaleFactor) * (overlayHeight / 2);
-
-      img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px)`;
-    }
-
+    lockedZoomOffsetX = overlayWidth / 2 - anchorX * newZoom;
+    lockedZoomOffsetY = overlayHeight / 2 - anchorY * newZoom;
     currentZoomLevel = newZoom;
+    img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px) scale(${currentZoomLevel})`;
   }
 
   function applySettingsFromStorage(raw) {
@@ -506,6 +477,8 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
+          max-width: none;
+          max-height: none;
         `;
 
     overlay.appendChild(img);
