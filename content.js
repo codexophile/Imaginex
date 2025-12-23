@@ -21,6 +21,7 @@
   let lockedZoomDragStartX = 0;
   let lockedZoomDragStartY = 0;
   let lockedZoomBorder = null;
+  let suppressClickExitOnce = false;
 
   // Shortcuts state
   let shortcutBindings = {
@@ -225,6 +226,7 @@
     // Otherwise, handle drag if in locked zoom mode
     if (!lockedZoomMode || !hoverOverlay) return;
     lockedZoomDragging = true;
+    suppressClickExitOnce = true; // avoid immediate exit on ensuing click after drag
     lockedZoomDragStartX = e.clientX;
     lockedZoomDragStartY = e.clientY;
     e.preventDefault();
@@ -1531,6 +1533,12 @@
       'click',
       event => {
         if (lockedZoomMode) {
+          if (suppressClickExitOnce) {
+            suppressClickExitOnce = false;
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
           if (hoverOverlay && !hoverOverlay.contains(event.target)) {
             // Click outside image while in locked zoom mode: exit
             exitLockedZoomMode();
