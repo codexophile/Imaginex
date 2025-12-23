@@ -56,6 +56,7 @@
       #image-enlarger-overlay.locked-zoom-mode {
         pointer-events: auto !important;
         cursor: grab;
+        background: transparent;
         border: 2px solid rgba(100, 150, 255, 0.5);
         box-shadow: inset 0 0 0 2px rgba(100, 150, 255, 0.3), 0 4px 20px rgba(0, 0, 0, 0.5);
         z-index: 999999;
@@ -150,7 +151,7 @@
       hoverOverlay.style.left = (vw - overlayW) / 2 + 'px';
       hoverOverlay.style.top = (vh - overlayH) / 2 + 'px';
       hoverOverlay.style.position = 'fixed';
-      hoverOverlay.style.overflow = 'hidden'; // Clip to viewport boundaries
+      hoverOverlay.style.overflow = 'visible'; // Allow free zoom without clipping
 
       // Show the image at its natural size inside the fixed overlay
       img.style.width = img.naturalWidth + 'px';
@@ -287,26 +288,22 @@
     img.style.width = currentWidth * scaleFactor + 'px';
     img.style.height = currentHeight * scaleFactor + 'px';
 
-    // If in locked zoom mode, apply the zoom
+    // If in locked zoom mode, apply the zoom centered on current viewport
     if (lockedZoomMode) {
-      // Adjust the transform to maintain center position while zooming
       const overlayWidth = hoverOverlay.offsetWidth;
       const overlayHeight = hoverOverlay.offsetHeight;
       const newImgWidth = currentWidth * scaleFactor;
       const newImgHeight = currentHeight * scaleFactor;
-      const overflowX = Math.max(0, newImgWidth - overlayWidth);
-      const overflowY = Math.max(0, newImgHeight - overlayHeight);
-      // Keep the current center point in view by adjusting offsets proportionally
-      const centerX = lockedZoomOffsetX + overlayWidth / 2;
-      const centerY = lockedZoomOffsetY + overlayHeight / 2;
-      lockedZoomOffsetX = Math.max(
-        -overflowX,
-        Math.min(centerX - overlayWidth / 2, 0)
-      );
-      lockedZoomOffsetY = Math.max(
-        -overflowY,
-        Math.min(centerY - overlayHeight / 2, 0)
-      );
+
+      // Keep the overlay center fixed using affine update:
+      // newOffset = scaleFactor * oldOffset + (1 - scaleFactor) * overlayCenter
+      lockedZoomOffsetX =
+        scaleFactor * lockedZoomOffsetX +
+        (1 - scaleFactor) * (overlayWidth / 2);
+      lockedZoomOffsetY =
+        scaleFactor * lockedZoomOffsetY +
+        (1 - scaleFactor) * (overlayHeight / 2);
+
       img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px)`;
     }
 
@@ -333,26 +330,22 @@
     img.style.width = currentWidth * scaleFactor + 'px';
     img.style.height = currentHeight * scaleFactor + 'px';
 
-    // If in locked zoom mode, apply the zoom
+    // If in locked zoom mode, apply the zoom centered on current viewport
     if (lockedZoomMode) {
-      // Adjust the transform to maintain center position while zooming
       const overlayWidth = hoverOverlay.offsetWidth;
       const overlayHeight = hoverOverlay.offsetHeight;
       const newImgWidth = currentWidth * scaleFactor;
       const newImgHeight = currentHeight * scaleFactor;
-      const overflowX = Math.max(0, newImgWidth - overlayWidth);
-      const overflowY = Math.max(0, newImgHeight - overlayHeight);
-      // Keep the current center point in view by adjusting offsets proportionally
-      const centerX = lockedZoomOffsetX + overlayWidth / 2;
-      const centerY = lockedZoomOffsetY + overlayHeight / 2;
-      lockedZoomOffsetX = Math.max(
-        -overflowX,
-        Math.min(centerX - overlayWidth / 2, 0)
-      );
-      lockedZoomOffsetY = Math.max(
-        -overflowY,
-        Math.min(centerY - overlayHeight / 2, 0)
-      );
+
+      // Keep the overlay center fixed using affine update:
+      // newOffset = scaleFactor * oldOffset + (1 - scaleFactor) * overlayCenter
+      lockedZoomOffsetX =
+        scaleFactor * lockedZoomOffsetX +
+        (1 - scaleFactor) * (overlayWidth / 2);
+      lockedZoomOffsetY =
+        scaleFactor * lockedZoomOffsetY +
+        (1 - scaleFactor) * (overlayHeight / 2);
+
       img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px)`;
     }
 
