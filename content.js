@@ -131,24 +131,18 @@
     if (img && img.naturalWidth && img.naturalHeight) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const maxW = Math.min(img.naturalWidth, vw - 30);
-      const maxH = Math.min(img.naturalHeight, vh - 30);
 
-      let displayW = maxW;
-      let displayH = maxH;
-      const aspectRatio = img.naturalWidth / img.naturalHeight;
-      if (displayW / displayH > aspectRatio) {
-        displayW = displayH * aspectRatio;
-      } else {
-        displayH = displayW / aspectRatio;
-      }
+      // Overlay size should be large enough to show the full image, but centered in viewport
+      const overlayW = Math.min(img.naturalWidth, vw - 30);
+      const overlayH = Math.min(img.naturalHeight, vh - 30);
 
-      // Fix overlay in viewport
-      hoverOverlay.style.width = displayW + 'px';
-      hoverOverlay.style.height = displayH + 'px';
-      hoverOverlay.style.left = (vw - displayW) / 2 + 'px';
-      hoverOverlay.style.top = (vh - displayH) / 2 + 'px';
+      // Position overlay centered in viewport
+      hoverOverlay.style.width = overlayW + 'px';
+      hoverOverlay.style.height = overlayH + 'px';
+      hoverOverlay.style.left = (vw - overlayW) / 2 + 'px';
+      hoverOverlay.style.top = (vh - overlayH) / 2 + 'px';
       hoverOverlay.style.position = 'fixed';
+      hoverOverlay.style.overflow = 'hidden'; // Clip to viewport boundaries
 
       // Show the image at its natural size inside the fixed overlay
       img.style.width = img.naturalWidth + 'px';
@@ -156,8 +150,8 @@
       img.style.objectFit = 'none';
 
       // Start centered: compute initial offsets so the overlay shows the image center
-      const overflowX = Math.max(0, img.naturalWidth - displayW);
-      const overflowY = Math.max(0, img.naturalHeight - displayH);
+      const overflowX = Math.max(0, img.naturalWidth - overlayW);
+      const overflowY = Math.max(0, img.naturalHeight - overlayH);
       lockedZoomOffsetX = -overflowX / 2;
       lockedZoomOffsetY = -overflowY / 2;
       img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px)`;
