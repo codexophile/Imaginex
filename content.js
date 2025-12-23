@@ -155,7 +155,7 @@
       // Show the image at its natural size inside the fixed overlay
       img.style.width = img.naturalWidth + 'px';
       img.style.height = img.naturalHeight + 'px';
-      img.style.objectFit = 'none';
+      // img.style.objectFit = 'none';
 
       // Start centered: compute initial offsets so the overlay shows the image center
       const overflowX = Math.max(0, img.naturalWidth - overlayW);
