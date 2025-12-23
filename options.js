@@ -354,6 +354,7 @@ async function init() {
   els.ruleAllowDomains = $('ruleAllowDomains');
   els.ruleExcludeDomains = $('ruleExcludeDomains');
   els.saveRuleBtn = $('saveRuleBtn');
+  els.saveAndCloseRuleBtn = $('saveAndCloseRuleBtn');
   els.cancelRuleBtn = $('cancelRuleBtn');
   els.testRuleBtn = $('testRuleBtn');
   els.ruleTestResults = $('ruleTestResults');
@@ -443,6 +444,9 @@ function wireEvents() {
   }
   if (els.saveRuleBtn) {
     els.saveRuleBtn.addEventListener('click', handleSaveRule);
+  }
+  if (els.saveAndCloseRuleBtn) {
+    els.saveAndCloseRuleBtn.addEventListener('click', handleSaveAndCloseRule);
   }
   if (els.cancelRuleBtn) {
     els.cancelRuleBtn.addEventListener('click', handleCancelRule);
@@ -913,14 +917,14 @@ async function handleSaveRule() {
 
   if (!name || !selector) {
     alert('Rule name and CSS selector are required.');
-    return;
+    return false;
   }
 
   if (!userScript) {
     alert(
       'Custom JavaScript is required. Use returnURL(url) or returnElement(el).'
     );
-    return;
+    return false;
   }
 
   const rules = [...(initial.customRules || [])];
@@ -959,16 +963,24 @@ async function handleSaveRule() {
   await updateSettings({ customRules: rules });
   initial = await loadSettings();
   renderCustomRules(initial.customRules || []);
-  els.ruleForm.style.display = 'none';
   els.status.textContent = editingRuleId ? 'Rule updated' : 'Rule added';
   setTimeout(() => {
     els.status.textContent = '';
   }, 1500);
+  return true;
 }
 
 function handleCancelRule() {
   els.ruleForm.style.display = 'none';
   editingRuleId = null;
+}
+
+async function handleSaveAndCloseRule() {
+  const ok = await handleSaveRule();
+  if (ok) {
+    els.ruleForm.style.display = 'none';
+    editingRuleId = null;
+  }
 }
 
 async function handleTestRule() {
