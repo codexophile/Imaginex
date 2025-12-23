@@ -403,6 +403,107 @@
     .section-content.active {
       display: block;
     }
+
+    .help-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(75, 108, 183, 0.15);
+      color: #4b6cb7;
+      border: 1px solid rgba(75, 108, 183, 0.3);
+      font-size: 12px;
+      font-weight: bold;
+      cursor: help;
+      margin-left: 6px;
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .help-button:hover {
+      background: rgba(75, 108, 183, 0.25);
+      border-color: rgba(75, 108, 183, 0.5);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .help-button {
+        background: rgba(75, 108, 183, 0.2);
+        color: #7ea3f0;
+      }
+      .help-button:hover {
+        background: rgba(75, 108, 183, 0.3);
+      }
+    }
+
+    .help-popup {
+      display: none;
+      position: absolute;
+      left: 28px;
+      top: 0;
+      min-width: 400px;
+      max-width: 500px;
+      background: #fff;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .help-button:hover .help-popup {
+      display: block;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .help-popup {
+        background: #2a2a2e;
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      }
+    }
+
+    .help-popup h4 {
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: #4b6cb7;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .help-popup h4 {
+        color: #7ea3f0;
+      }
+    }
+
+    .help-popup p {
+      margin: 8px 0;
+    }
+
+    .help-popup code {
+      background: rgba(0, 0, 0, 0.06);
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .help-popup code {
+        background: rgba(255, 255, 255, 0.1);
+      }
+    }
+
+    .help-popup ul {
+      margin: 4px 0;
+      padding-left: 20px;
+    }
+
+    .help-popup li {
+      margin: 4px 0;
+    }
   </style>
 </head>
 
@@ -563,12 +664,39 @@
               </div>
 
               <div class="form-group">
-                <label for="ruleUserScript">Custom JavaScript</label>
+                <label for="ruleUserScript">
+                  Custom JavaScript
+                  <span class="help-button">?
+                    <div class="help-popup">
+                      <h4>Custom JavaScript Guide</h4>
+                      <p><strong>Return a URL or Element:</strong></p>
+                      <ul>
+                        <li><code>returnURL(url)</code> — Return an image URL string</li>
+                        <li><code>returnElement(el)</code> — Return an img/picture element (extension auto-picks best srcset)</li>
+                      </ul>
+                      <p><strong>Available Variables:</strong></p>
+                      <ul>
+                        <li><code>ctx.selector</code> — The CSS selector that matched</li>
+                        <li><code>ctx.src</code> — The element's src attribute (if any)</li>
+                        <li><code>ctx.href</code> — The element's href or closest anchor's href</li>
+                        <li><code>trigger</code> — Direct DOM reference to the matched element</li>
+                      </ul>
+                      <p><strong>Debugging:</strong></p>
+                      <ul>
+                        <li><code>log(...args)</code> — Outputs to console for debugging</li>
+                      </ul>
+                      <p><strong>Example:</strong></p>
+                      <code style="display:block; margin-top:6px; padding:8px; white-space:pre-wrap;">const videoId = ctx.src.match(/\/([A-Za-z0-9_-]{11})/);
+if (videoId) returnURL('https://i.ytimg.com/vi/' + videoId[1] + '/maxres.jpg');</code>
+                    </div>
+                  </span>
+                </label>
                 <textarea id="ruleUserScript" spellcheck="false"
-                  placeholder='// Call one of:\n// returnURL("https://example.com/highres.jpg");\n// returnElement(document.querySelector("img"));\n// You have access to: ctx (selector, src, href), and trigger (matched element).'></textarea>
+                  placeholder='// Use returnURL(url) or returnElement(el)\n// Available: ctx.selector, ctx.src, ctx.href, trigger, log()'></textarea>
                 <div class="help-text">
-                  Provide a URL via <code>returnURL(url)</code> or an element via <code>returnElement(el)</code>.
-                  The script runs in a safe user script world with access to <code>ctx</code> and <code>trigger</code>.
+                  <strong>Required:</strong> <code>returnURL(url)</code> or <code>returnElement(el)</code>
+                  <br>
+                  <strong>Context:</strong> <code>ctx</code> (selector, src, href), <code>trigger</code> (DOM element), <code>log()</code>
                 </div>
               </div>
 
