@@ -234,26 +234,10 @@
     lockedZoomOffsetX += dx;
     lockedZoomOffsetY += dy;
 
-    // Constrain offsets so the image stays fully visible within the overlay
     const img = hoverOverlay.querySelector('img');
-    if (img && img.naturalWidth && img.naturalHeight) {
-      const overflowX = Math.max(
-        0,
-        img.naturalWidth - hoverOverlay.offsetWidth
-      );
-      const overflowY = Math.max(
-        0,
-        img.naturalHeight - hoverOverlay.offsetHeight
-      );
-      const minX = -overflowX;
-      const maxX = 0;
-      const minY = -overflowY;
-      const maxY = 0;
-      lockedZoomOffsetX = Math.max(minX, Math.min(lockedZoomOffsetX, maxX));
-      lockedZoomOffsetY = Math.max(minY, Math.min(lockedZoomOffsetY, maxY));
+    if (img) {
+      img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px)`;
     }
-
-    img.style.transform = `translate(${lockedZoomOffsetX}px, ${lockedZoomOffsetY}px)`;
 
     lockedZoomDragStartX = e.clientX;
     lockedZoomDragStartY = e.clientY;
