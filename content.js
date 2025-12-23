@@ -187,6 +187,27 @@
   }
 
   function handleLockedZoomMouseDown(e) {
+    // Check for mouse zoom shortcut first
+    const zoomBindings = shortcutBindings.zoomFullResolution || [];
+    const isZoomShortcut = zoomBindings.some(b =>
+      bindingMatchesMouseEvent(b, e)
+    );
+
+    if (isZoomShortcut) {
+      if (hoverOverlay && hoverOverlay.style.display === 'block') {
+        if (lockedZoomMode) {
+          exitLockedZoomMode();
+        } else {
+          enterLockedZoomMode();
+        }
+        e.preventDefault();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        e.stopPropagation();
+        return;
+      }
+    }
+
+    // Otherwise, handle drag if in locked zoom mode
     if (!lockedZoomMode || !hoverOverlay) return;
     lockedZoomDragging = true;
     lockedZoomDragStartX = e.clientX;
@@ -1263,6 +1284,58 @@
     }
   }
 
+  // Helper function to normalize keyboard events to binding format
+  function normalizeKeyboardShortcut(event) {
+    const modifiers = [];
+    if (event.ctrlKey) modifiers.push('Ctrl');
+    if (event.altKey) modifiers.push('Alt');
+    if (event.shiftKey) modifiers.push('Shift');
+    if (event.metaKey) modifiers.push('Meta');
+
+    let key = event.key.toUpperCase();
+    // Map special keys
+    const specialKeyMap = {
+      ARROWUP: 'Up',
+      ARROWDOWN: 'Down',
+      ARROWLEFT: 'Left',
+      ARROWRIGHT: 'Right',
+      ENTER: 'Enter',
+      ' ': 'Space',
+    };
+    key = specialKeyMap[key] || key;
+
+    const combo = [...modifiers, key].join('+');
+    return { type: 'keyboard', combo };
+  }
+
+  // Helper function to check if a binding matches the keyboard event
+  function bindingMatchesKeyboardEvent(binding, event) {
+    if (!binding || binding.type !== 'keyboard') return false;
+    const normalized = normalizeKeyboardShortcut(event);
+    return binding.combo === normalized.combo;
+  }
+
+  // Helper function to normalize mouse events to binding format
+  function normalizeMouseShortcut(event) {
+    const MOUSE_BUTTON_LABELS = {
+      0: 'MouseLeft',
+      1: 'MouseMiddle',
+      2: 'MouseRight',
+      3: 'MouseBack',
+      4: 'MouseForward',
+    };
+    const buttonLabel =
+      MOUSE_BUTTON_LABELS[event.button] || `MouseButton${event.button}`;
+    return { type: 'mouse', combo: buttonLabel };
+  }
+
+  // Helper function to check if a binding matches the mouse event
+  function bindingMatchesMouseEvent(binding, event) {
+    if (!binding || binding.type !== 'mouse') return false;
+    const normalized = normalizeMouseShortcut(event);
+    return binding.combo === normalized.combo;
+  }
+
   // Initialize the extension
   function init() {
     // Inject universal CSS fixes for overlay elements that block image interaction
@@ -1398,52 +1471,6 @@
       },
       true
     );
-
-    // Helper function to normalize keyboard events to binding format
-    function normalizeKeyboardShortcut(event) {
-      const modifiers = [];
-      if (event.ctrlKey) modifiers.push('Ctrl');
-      if (event.altKey) modifiers.push('Alt');
-      if (event.shiftKey) modifiers.push('Shift');
-      if (event.metaKey) modifiers.push('Meta');
-
-      let key = event.key.toUpperCase();
-      // Map special keys
-      const specialKeyMap = {
-        ARROWUP: 'Up',
-        ARROWDOWN: 'Down',
-        ARROWLEFT: 'Left',
-        ARROWRIGHT: 'Right',
-        ENTER: 'Enter',
-        ' ': 'Space',
-      };
-      key = specialKeyMap[key] || key;
-
-      const combo = [...modifiers, key].join('+');
-      return { type: 'keyboard', combo };
-    }
-
-    // Helper function to check if a binding matches the keyboard event
-    function bindingMatchesKeyboardEvent(binding, event) {
-      if (!binding || binding.type !== 'keyboard') {
-        console.log(
-          'bindingMatchesKeyboardEvent: binding invalid or not keyboard',
-          binding
-        );
-        return false;
-      }
-      const normalized = normalizeKeyboardShortcut(event);
-      const matches = binding.combo === normalized.combo;
-      console.log(
-        'Comparing binding:',
-        binding.combo,
-        'vs normalized event:',
-        normalized.combo,
-        'Match:',
-        matches
-      );
-      return matches;
-    }
 
     document.addEventListener(
       'keydown',
