@@ -658,24 +658,13 @@ function renderBuiltInRulesCategory(container, rules) {
 
   container.innerHTML = rules
     .map(rule => {
-      const domainInfo = [];
-      if (Array.isArray(rule.allowDomains) && rule.allowDomains.length > 0) {
-        domainInfo.push(
-          `<strong>Allowed:</strong> ${escapeHtml(
-            rule.allowDomains.join(', ')
-          )}`
-        );
-      }
-      if (
-        Array.isArray(rule.excludeDomains) &&
-        rule.excludeDomains.length > 0
-      ) {
-        domainInfo.push(
-          `<strong>Excluded:</strong> ${escapeHtml(
-            rule.excludeDomains.join(', ')
-          )}`
-        );
-      }
+      const allowDomainsStr = Array.isArray(rule.allowDomains)
+        ? rule.allowDomains.join(', ')
+        : '';
+      const excludeDomainsStr = Array.isArray(rule.excludeDomains)
+        ? rule.excludeDomains.join(', ')
+        : '';
+
       return `
     <div class="rule-item" data-rule-id="${rule.id}">
       <div class="rule-header">
@@ -688,16 +677,62 @@ function renderBuiltInRulesCategory(container, rules) {
             ${escapeHtml(rule.name)}
           </span>
         </div>
+        <div class="rule-actions">
+          <button class="edit-builtin-domains-btn" data-rule-id="${
+            rule.id
+          }" style="padding: 4px 10px; font-size: 12px;">Edit Domains</button>
+        </div>
       </div>
       <div class="rule-details">
         ${escapeHtml(rule.description)}
-        ${
-          domainInfo.length > 0
-            ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1); font-size: 11px;">${domainInfo.join(
-                ' | '
-              )}</div>`
-            : ''
-        }
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1); font-size: 11px;">
+          <div style="margin-bottom: 4px;">
+            <strong>Allowed:</strong> ${
+              allowDomainsStr
+                ? escapeHtml(allowDomainsStr)
+                : '<span style="opacity:0.5;">All domains</span>'
+            }
+          </div>
+          <div>
+            <strong>Excluded:</strong> ${
+              excludeDomainsStr
+                ? escapeHtml(excludeDomainsStr)
+                : '<span style="opacity:0.5;">None</span>'
+            }
+          </div>
+        </div>
+      </div>
+      <div class="builtin-domain-editor" id="domain-editor-${
+        rule.id
+      }" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.15);">
+        <div style="margin-bottom: 10px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px;">Allowed Domains</label>
+          <input type="text" class="builtin-allow-input" data-rule-id="${
+            rule.id
+          }" 
+                 value="${escapeHtml(allowDomainsStr)}" 
+                 placeholder="e.g., youtube.com, *.youtube.com (comma-separated)" 
+                 style="width: 100%; box-sizing: border-box; padding: 6px; font-size: 12px;" />
+          <div style="font-size: 10px; opacity: 0.6; margin-top: 2px;">Leave empty to run on all domains. Supports wildcards (*.example.com)</div>
+        </div>
+        <div style="margin-bottom: 10px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px;">Excluded Domains</label>
+          <input type="text" class="builtin-exclude-input" data-rule-id="${
+            rule.id
+          }" 
+                 value="${escapeHtml(excludeDomainsStr)}" 
+                 placeholder="e.g., example.com (comma-separated)" 
+                 style="width: 100%; box-sizing: border-box; padding: 6px; font-size: 12px;" />
+          <div style="font-size: 10px; opacity: 0.6; margin-top: 2px;">Domains where this rule should NOT run (overrides allowed domains)</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="save-builtin-domains-btn" data-rule-id="${
+            rule.id
+          }" style="padding: 6px 12px; font-size: 12px;">Save</button>
+          <button class="cancel-builtin-domains-btn secondary" data-rule-id="${
+            rule.id
+          }" style="padding: 6px 12px; font-size: 12px;">Cancel</button>
+        </div>
       </div>
     </div>
   `;
@@ -707,6 +742,18 @@ function renderBuiltInRulesCategory(container, rules) {
   // Wire up event handlers
   container.querySelectorAll('.builtin-rule-enabled-toggle').forEach(toggle => {
     toggle.addEventListener('change', handleToggleBuiltInRule);
+  });
+
+  container.querySelectorAll('.edit-builtin-domains-btn').forEach(btn => {
+    btn.addEventListener('click', handleEditBuiltInDomains);
+  });
+
+  container.querySelectorAll('.save-builtin-domains-btn').forEach(btn => {
+    btn.addEventListener('click', handleSaveBuiltInDomains);
+  });
+
+  container.querySelectorAll('.cancel-builtin-domains-btn').forEach(btn => {
+    btn.addEventListener('click', handleCancelBuiltInDomains);
   });
 }
 
@@ -727,6 +774,71 @@ async function handleToggleBuiltInRule(e) {
   setTimeout(() => {
     els.status.textContent = '';
   }, 1500);
+}
+
+function handleEditBuiltInDomains(e) {
+  const ruleId = e.target.dataset.ruleId;
+  const editor = document.getElementById(`domain-editor-${ruleId}`);
+  if (editor) {
+    editor.style.display = 'block';
+    e.target.textContent = 'Editing...';
+    e.target.disabled = true;
+  }
+}
+
+async function handleSaveBuiltInDomains(e) {
+  const ruleId = e.target.dataset.ruleId;
+
+  // Get input values
+  const allowInput = document.querySelector(
+    `.builtin-allow-input[data-rule-id="${ruleId}"]`
+  );
+  const excludeInput = document.querySelector(
+    `.builtin-exclude-input[data-rule-id="${ruleId}"]`
+  );
+
+  if (!allowInput || !excludeInput) return;
+
+  const parseDomainsInput = input => {
+    return (input || '')
+      .split(',')
+      .map(d => d.trim())
+      .filter(d => d.length > 0);
+  };
+
+  const allowDomains = parseDomainsInput(allowInput.value);
+  const excludeDomains = parseDomainsInput(excludeInput.value);
+
+  // Update the rule
+  const builtInRules = (initial.builtInRules || []).map(r =>
+    r.id === ruleId ? { ...r, allowDomains, excludeDomains } : r
+  );
+
+  await updateSettings({ builtInRules });
+  initial = await loadSettings();
+  renderBuiltInRules(initial.builtInRules || []);
+
+  els.status.textContent = `Domains updated for ${ruleId}`;
+  setTimeout(() => {
+    els.status.textContent = '';
+  }, 1500);
+}
+
+function handleCancelBuiltInDomains(e) {
+  const ruleId = e.target.dataset.ruleId;
+  const editor = document.getElementById(`domain-editor-${ruleId}`);
+  if (editor) {
+    editor.style.display = 'none';
+
+    // Re-enable the edit button
+    const editBtn = document.querySelector(
+      `.edit-builtin-domains-btn[data-rule-id="${ruleId}"]`
+    );
+    if (editBtn) {
+      editBtn.textContent = 'Edit Domains';
+      editBtn.disabled = false;
+    }
+  }
 }
 
 // API Keys Management (keeping existing code)
