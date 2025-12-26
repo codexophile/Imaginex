@@ -173,13 +173,24 @@ function ensureDefaults(data) {
   if (!Array.isArray(merged.builtInRules)) {
     merged.builtInRules = deepClone(SETTINGS_DEFAULTS.builtInRules);
   } else {
-    // Merge user preferences with defaults (keep user enabled/disabled state)
-    const userPrefs = new Map(merged.builtInRules.map(r => [r.id, r.enabled]));
+    // Merge user preferences with defaults while preserving user-edited fields
+    // (e.g., allowDomains/excludeDomains) and the enabled state.
+    const userRuleMap = new Map(merged.builtInRules.map(r => [r.id, r]));
     merged.builtInRules = SETTINGS_DEFAULTS.builtInRules.map(defaultRule => {
-      const enabled = userPrefs.has(defaultRule.id)
-        ? userPrefs.get(defaultRule.id)
-        : defaultRule.enabled;
-      return { ...defaultRule, enabled };
+      const userRule = userRuleMap.get(defaultRule.id);
+      if (userRule) {
+        const mergedRule = { ...defaultRule, ...userRule };
+        // Ensure canonical metadata from defaults remains intact
+        mergedRule.id = defaultRule.id;
+        mergedRule.name = defaultRule.name;
+        mergedRule.category = defaultRule.category;
+        mergedRule.description = defaultRule.description;
+        if (typeof userRule.enabled === 'undefined') {
+          mergedRule.enabled = defaultRule.enabled;
+        }
+        return mergedRule;
+      }
+      return { ...defaultRule };
     });
   }
   return merged;
