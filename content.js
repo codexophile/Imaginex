@@ -22,6 +22,7 @@
   let lockedZoomDragStartY = 0;
   let lockedZoomBorder = null;
   let suppressClickExitOnce = false;
+  let wasActualDrag = false;
 
   // Shortcuts state
   let shortcutBindings = {
@@ -226,7 +227,7 @@
     // Otherwise, handle drag if in locked zoom mode
     if (!lockedZoomMode || !hoverOverlay) return;
     lockedZoomDragging = true;
-    suppressClickExitOnce = true; // avoid immediate exit on ensuing click after drag
+    wasActualDrag = false; // Reset on new drag start
     lockedZoomDragStartX = e.clientX;
     lockedZoomDragStartY = e.clientY;
     e.preventDefault();
@@ -237,6 +238,11 @@
     if (!lockedZoomMode || !lockedZoomDragging || !hoverOverlay) return;
     const dx = e.clientX - lockedZoomDragStartX;
     const dy = e.clientY - lockedZoomDragStartY;
+
+    // Mark as actual drag if we've moved a significant amount
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+      wasActualDrag = true;
+    }
 
     lockedZoomOffsetX += dx;
     lockedZoomOffsetY += dy;
@@ -255,6 +261,10 @@
   function handleLockedZoomMouseUp(e) {
     if (!lockedZoomMode) return;
     lockedZoomDragging = false;
+    // Only suppress the next click if we actually dragged
+    if (wasActualDrag) {
+      suppressClickExitOnce = true;
+    }
     e.preventDefault();
     e.stopPropagation();
   }
