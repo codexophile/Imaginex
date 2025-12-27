@@ -1,215 +1,71 @@
-# Quick Start Guide - Custom Rules
+# Quick Start Guide — Custom Rules
 
 ## What Are Custom Rules?
 
-Custom rules let you find higher-quality versions of images that the extension can't normally detect. For example, YouTube shows small thumbnail images, but higher-resolution versions exist at predictable URLs.
+Custom rules help the extension find high‑quality images it can’t automatically detect. You provide a CSS selector and a small JavaScript snippet that returns a URL or element.
 
-## Creating Your First Custom Rule
+## Create Your First Rule
 
-### Step 1: Open Options
+### 1) Open Options
 
-1. Click the extension icon or go to `chrome://extensions/`
-2. Find "Imaginex" and click "Options"
-3. Scroll down to the "Custom Rules" section
+1. Click the extension icon or go to `chrome://extensions/`.
+2. Find “Imaginex” and click “Options”.
+3. Open the “Custom Rules” section.
 
-### Step 2: Click "Add New Rule"
+### 2) Click “Add New Rule”
 
-A form will appear with several fields to fill out.
+Fill in:
 
-### Step 3: Fill Out the Rule
+- **Rule Name**: e.g., “YouTube Thumbnails”.
+- **CSS Selector**: e.g., `a#thumbnail img[src*="ytimg.com"]`.
+- **Custom JavaScript**: must call `returnURL(url)` or `returnElement(el)`.
 
-#### Rule Name
+Example userScript:
 
-Give your rule a descriptive name like "YouTube Thumbnails" or "Product Images"
-
-#### CSS Selector
-
-This tells the extension which elements to match. Examples:
-
-- `a#thumbnail img[src*="ytimg.com"]` - YouTube thumbnails
-- `img.product-image` - Product images with that class
-- `div[data-image-id]` - Divs with a data-image-id attribute
-
-**Tip**: Use browser DevTools (F12) to inspect elements and test selectors
-
-#### URL Template (optional)
-
-A pattern for the high-quality image URL with placeholders:
-
-- `https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp`
-- `https://cdn.example.com/{productId}/large.jpg`
-
-To return a full URL, set the URL template to `{url}` and extract a `url` variable.
-
-#### Extract Rules (JSON) (optional)
-
-Manifest V3 blocks running user-provided JavaScript (`unsafe-eval`), so extraction uses CSP-safe regex rules.
-
-**Example 1 - Extract `videoId` for template:**
-
-```json
-[
-  {
-    "var": "videoId",
-    "regex": "\\/vi(?:_webp)?\\/([^\\/]+)",
-    "sources": [{ "type": "src" }, { "type": "href" }]
-  }
-]
+```js
+/* globals ctx, returnURL */
+(() => {
+  const m =
+    (ctx.src || '').match(/\/(?:vi|vi_webp)\/([A-Za-z0-9_-]{11})/) ||
+    (ctx.href || '').match(/[?&]v=([A-Za-z0-9_-]{11})/);
+  const id = m && m[1];
+  if (!id) return;
+  returnURL('https://i.ytimg.com/vi/' + id + '/maxresdefault.jpg');
+})();
 ```
 
-**Example 2 - Return full URL via `{url}`:**
+### 3) Save the Rule
 
-Set URL template to:
+Click “Save Rule”. Use domain filters if it’s site‑specific.
 
-```
-{url}
-```
+### 4) Test It
 
-Then extract from an attribute:
+1. Open a page with matching elements (YouTube or `custom-rules-test.html`).
+2. Use “Test on Current Tab” or the popup tester.
+3. Hover matching elements to see the enlarged image.
 
-```json
-[
-  {
-    "var": "url",
-    "regex": "^(.+)$",
-    "sources": [{ "type": "attr", "name": "data-hd-url" }]
-  }
-]
-```
+## Built‑in Helpers
 
-### Step 4: Save the Rule
-
-Click "Save Rule" and the rule will be added to your list.
-
-### Step 5: Test It
-
-1. Go to a website with matching elements (try `custom-rules-test.html` for testing)
-2. Hover over an element that matches your selector
-3. The high-quality image should appear!
-
-## Pre-configured Example: YouTube
-
-The extension comes with a YouTube rule already configured:
-
-**Selector:** `a#thumbnail img[src*="i.ytimg.com"]`  
-**URL Template:** `https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp`  
-**Extract Rules (JSON):**
-
-```json
-[
-  {
-    "var": "videoId",
-    "regex": "\\/vi(?:_webp)?\\/([^\\/]+)",
-    "sources": [{ "type": "src" }]
-  },
-  {
-    "var": "videoId",
-    "regex": "[?&]v=([^&]+)",
-    "sources": [{ "type": "href" }]
-  }
-]
-```
-
-This extracts the video ID and generates a URL for the 1920x1080 thumbnail.
-
-## Common Patterns
-
-### Pattern 1: Extract from URL
-
-```javascript
-// Extract ID from image source
-const id = element.src.match(/\/images\/(\d+)\//)?.[1];
-return { id };
-```
-
-### Pattern 2: Extract from Data Attribute
-
-```javascript
-// Get ID from data attribute
-const id = element.dataset.imageId;
-return id ? { id } : null;
-```
-
-### Pattern 3: Modify Existing URL
-
-```javascript
-// Replace size parameter in URL
-let url = element.src.replace('/small/', '/large/');
-return url; // Return full URL
-```
-
-### Pattern 4: Navigate to Parent Element
-
-```javascript
-// Look at parent link for information
-const link = element.closest('a');
-const id = link?.href?.match(/id=(\d+)/)?.[1];
-return { id };
-```
+- `returnURL(url)`: Provide an image URL (or array of URLs for galleries).
+- `returnElement(el)`: Provide an img/picture/source; the extension picks the best `srcset`.
+- `ctx.src`, `ctx.href`: Useful inputs from the matched element.
+- `trigger`: Direct reference to the matched DOM element.
 
 ## Troubleshooting
 
-### Rule Not Working?
+- Verify your selector matches (`document.querySelectorAll(...)`).
+- Check console logs (“Custom rule matched…”; errors appear as `imagus:userScriptError`).
+- Ensure you call `returnURL(...)` or `returnElement(...)` and guard for missing data.
+- Confirm the rule is enabled in Options.
 
-1. **Check the selector**: Open DevTools console and try:
+## Tips
 
-   ```javascript
-   document.querySelectorAll('your-selector-here');
-   ```
+- Start simple; return existing high‑res URLs before doing complex logic.
+- Keep selectors specific to avoid unintended matches.
+- Use galleries (array of URLs) when multiple images are present.
 
-   If nothing shows up, your selector doesn't match.
+## More
 
-2. **Check console logs**: The extension logs debug messages:
-
-   - "Element matches custom rule: [Name]"
-   - "Custom rule generated URL: [URL]"
-   - Look for error messages
-
-3. **Test your JavaScript**: Try running it in the console:
-
-   ```javascript
-   const element = document.querySelector('your-selector');
-   // Paste your custom JS here
-   ```
-
-4. **Verify the rule is enabled**: Check the toggle next to the rule name
-
-### Common Mistakes
-
-❌ **Forgot to return something**: Your JavaScript must return either an object or a URL string  
-✅ `return { videoId }` or `return 'https://...'`
-
-❌ **Selector too broad**: Matches too many elements  
-✅ Make it more specific: add class names, attributes, or parent selectors
-
-❌ **Missing null check**: Code crashes if data isn't found  
-✅ Always check: `if (!id) return null;`
-
-❌ **Template placeholder doesn't match variable name**  
-✅ If template has `{videoId}`, return object must have `videoId` property
-
-## Tips for Success
-
-1. **Start Simple**: Begin with the URL template approach before trying complex JavaScript
-2. **Test on Known Sites**: Use the provided test page or YouTube to verify things work
-3. **One Rule at a Time**: Add rules one by one and test each before adding more
-4. **Copy from Examples**: Use the examples in CUSTOM_RULES.md as templates
-5. **Be Specific**: Narrow selectors prevent false matches and improve performance
-
-## Need More Help?
-
-- Read the full documentation: [CUSTOM_RULES.md](CUSTOM_RULES.md)
-- Test your rules: [custom-rules-test.html](custom-rules-test.html)
-- Check implementation details: [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)
-
-## Example Sites to Try
-
-Once you've mastered custom rules, try creating rules for:
-
-- **YouTube**: Video thumbnails (included by default)
-- **Twitter/X**: Profile pictures and post images
-- **Instagram**: Post images and stories
-- **Reddit**: Image posts and thumbnails
-- **Product sites**: E-commerce product images
-
-Happy rule creating! 🎨
+- Full docs: [CUSTOM_RULES.md](CUSTOM_RULES.md)
+- Implementation notes: [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)
+  Happy rule creating! 🎨

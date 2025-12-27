@@ -80,8 +80,7 @@ async function init() {
         rule: {
           name: rule.name,
           selector: rule.selector,
-          urlTemplate: rule.urlTemplate,
-          extract: rule.extract,
+          userScript: rule.userScript,
         },
       });
 

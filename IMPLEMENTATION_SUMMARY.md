@@ -2,206 +2,82 @@
 
 ## Overview
 
-Added a comprehensive custom rules system that allows users to define how the extension should find higher-quality images for specific HTML elements. This is particularly useful for:
-
-- Elements without image tags that link to images
-- Low-quality images where better versions exist at predictable URLs
-- Complex page structures requiring custom logic
+Custom rules enable users to define how the extension finds higher‑quality images for specific elements by running a small, sandboxed JavaScript snippet. This is useful for elements without image tags, sites with low‑quality thumbnails but predictable high‑res URLs, and complex page structures.
 
 ## What Was Added
 
 ### 1. Settings Module (`settings.js`)
 
-- Added `customRules` array to default settings
-- Includes an example YouTube thumbnail rule pre-configured
-- Rules persist across browser sessions
+- Added `customRules` array to default settings (includes a YouTube example).
+- Persistent storage under `__settings_v1` with merging of defaults and user edits.
+- Built‑in rules catalog with per‑domain filters and toggle states.
 
 ### 2. Options Page UI (`options.html`)
 
-- New "Custom Rules" section with:
-  - List of all defined rules with enable/disable toggles
-  - Add/Edit/Delete rule functionality
-  - Form for creating/editing rules with validation
-  - Visual feedback for rule status
-- Responsive design matching the existing options page style
+- “Custom Rules” section with Add/Edit/Delete, enable/disable, and a tester.
+- “Built‑in Rules” section with detection behaviors and site‑specific CSS fixes, plus per‑rule domain editors.
+- “Shortcuts” section to assign keyboard/mouse bindings for locked zoom toggle and zoom in/out.
+- “Cloud Sync” section for manual Google Drive save/load.
 
 ### 3. Options Page Logic (`options.js`)
 
-- Functions to render, add, edit, delete, and toggle custom rules
-- Real-time updates when rules are modified
-- Form validation to ensure required fields are filled
-- Integration with the settings module for persistence
+- Renders and manages custom rules, built‑in rules domain filters, shortcuts capture, and API keys.
+- Sends `imagus:testRule` to the active tab for rule testing.
+- Auto‑saves settings with debounced updates and subscribes to external changes.
 
 ### 4. Content Script (`content.js`)
 
-- Custom rule matching engine using CSS selectors
-- JavaScript execution sandbox for extracting data from elements
-- URL template system with placeholder replacement
-- Support for both IMG and non-IMG elements
-- Integration with existing hover detection system
-- Debug logging for troubleshooting
-- Automatic preference for parent anchor href when hovering an `img` inside a link if the `href` is an image URL (uses higher-resolution link targets by default without needing a custom rule)
+- Event delegation for hover detection on `IMG`, `A`, and elements with `background-image`.
+- Best source selection from `srcset`/`picture`/`source` or anchor `href` if it points to an image.
+- Executes custom user scripts via background `userScripts` bridge; supports returning a single URL or an array (gallery).
+- Overlay management with intelligent positioning, a loading spinner, gallery controls, and a **locked zoom mode** (pan + zoom).
+- Built‑in rule gating via `isRuleEnabled(ruleId)` and dynamic CSS fixes injection.
 
-### 5. Documentation
+### 5. Background Service Worker (`background.js`)
 
-- **CUSTOM_RULES.md**: Comprehensive guide with:
-  - How custom rules work
-  - Component explanations (selector, template, JavaScript)
-  - Multiple real-world examples
-  - Tips and best practices
-  - Debugging guide
-  - Security considerations
-- **custom-rules-test.html**: Test page with:
-  - Multiple test scenarios
-  - YouTube thumbnail examples
-  - Product image examples
-  - Non-IMG element examples
-  - Instructions and debugging tips
+- Handles `imagus:execUserScript`, wraps code, and executes in `USER_SCRIPT` world.
+- Signals results to the page via DOM `CustomEvent` (URL or element selector).
 
-### 6. README Updates
+### 6. Documentation
 
-- Added custom rules to features list
-- Documented the custom rules section
-- Included example usage
-- Updated file structure
+- Updated **CUSTOM_RULES.md** and **QUICK_START.md** to focus on `userScript` usage and gallery support.
+- **BUILT_IN_RULES.md** documents toggleable detection behaviors and CSS fixes.
 
-## How It Works
+## Execution Flow
 
-### Rule Structure
-
-Each custom rule consists of:
-
-```javascript
-{
-  id: 'unique-id',
-  name: 'Rule Name',
-  enabled: true,
-  selector: 'CSS selector',
-  urlTemplate: 'https://example.com/{placeholder}',
-  extract: [
-    { var: 'placeholder', regex: '...', sources: [{ type: 'src' }] }
-  ]
-}
-```
-
-### Execution Flow
-
-1. User hovers over an element
-2. Extension checks if element matches any enabled custom rule's CSS selector
-3. If matched, runs CSP-safe extractor steps (`extract`) to produce variables
-4. Placeholders in the URL template are replaced with extracted variables
-5. Final URL is used to display the high-quality image
-
-### Example: YouTube Thumbnails
-
-```javascript
-// Rule Configuration
-{
-  selector: 'a#thumbnail img[src*="i.ytimg.com"]',
-  urlTemplate: 'https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp',
-  extract: [
-    { var: 'videoId', regex: '\\/vi(?:_webp)?\\/([^\\/]+)', sources: [{ type: 'src' }] }
-  ]
-}
-
-// Execution
-// 1. User hovers over YouTube thumbnail
-// 2. Selector matches the thumbnail image
-// 3. Extractor extracts video ID: "dQw4w9WgXcQ"
-// 4. Template generates: https://i.ytimg.com/vi_webp/dQw4w9WgXcQ/maxresdefault.webp
-// 5. Extension displays 1920x1080 thumbnail instead of default 320x180
-```
+1. User hovers an element.
+2. `content.js` checks built‑in rules and custom rule selectors.
+3. If a custom rule matches, it asks `background.js` to execute the `userScript`.
+4. The script returns a URL (or array) or an element; `content.js` displays the image and optionally shows gallery controls.
+5. User can toggle locked zoom, pan, and zoom via shortcuts or mouse wheel.
 
 ## Key Features
 
-### Flexibility
+- Flexible detection across `IMG`, anchors, and CSS backgrounds.
+- Best‑available image selection with `srcset` parsing.
+- Toggleable built‑in rules with per‑domain controls.
+- Custom rules via `userScript` with gallery support.
+- Locked zoom mode with precise panning and zooming.
 
-- Works with any HTML element (img, div, a, etc.)
-- CSS selectors provide powerful element matching
-- Extract rules provide CSP-safe data extraction
-- URL templates make common patterns easy to define
+## Files Modified / Created
 
-### User Experience
-
-- Intuitive UI for managing rules
-- Enable/disable without deleting
-- Edit existing rules
-- Visual feedback on rule status
-- Pre-configured example rule
-
-### Developer Experience
-
-- Comprehensive documentation with examples
-- Test page for validation
-- Console logging for debugging
-- Error handling for invalid rules
-
-### Security
-
-- JavaScript executes in content script context
-- Sandboxed execution (Function constructor)
-- No eval() usage
-- Clear security note in documentation
-
-## Files Modified
-
-1. **settings.js**: Added customRules to defaults
-2. **options.html**: Added custom rules UI section with styles
-3. **options.js**: Added rule management functions and event handlers
-4. **content.js**: Added rule matching, execution, and image loading logic
-5. **README.md**: Updated features and documentation
-
-## Files Created
-
-1. **CUSTOM_RULES.md**: Complete user guide
-2. **custom-rules-test.html**: Test page with examples
+- Modified: `settings.js`, `options.html`, `options.js`, `content.js`, `README.md`.
+- Created/Updated docs: `CUSTOM_RULES.md`, `QUICK_START.md`, `BUILT_IN_RULES.md`.
 
 ## Testing Recommendations
 
-1. **Load the extension** with the updated code
-2. **Open options page** and verify the custom rules section appears
-3. **Check the default YouTube rule** is present and enabled
-4. **Open custom-rules-test.html** to test various scenarios
-5. **Hover over test images** and check console for debug messages
-6. **Try creating new rules** with the test page examples
-7. **Test enable/disable** toggle functionality
-8. **Verify rule persistence** by closing and reopening the browser
-
-## Future Enhancements
-
-Potential improvements for future versions:
-
-- Rule import/export functionality
-- Rule sharing community/marketplace
-- Visual rule builder (point-and-click selector)
-- Rule testing interface within options page
-- Pre-configured rule library for popular sites
-- Performance metrics per rule
-- Rule execution timeout limits
-- Regex support in URL templates
+1. Load the extension and open Options.
+2. Verify Shortcuts and Built‑in Rules sections.
+3. Ensure the default YouTube custom rule is enabled.
+4. Use the rule tester on a YouTube page to validate.
+5. Hover images and confirm overlay, gallery, and locked zoom behaviors.
 
 ## Technical Notes
 
-### Performance Considerations
-
-- Rules are filtered to only enabled ones
-- CSS selector matching is native and fast
-- Custom JS execution is synchronous but should be quick
-- No external network requests for rule processing
-
-### Browser Compatibility
-
-- Uses modern JavaScript features (arrow functions, template literals, optional chaining)
-- Compatible with all Chromium-based browsers supporting MV3
-- CSS selector matching uses native `element.matches()`
-
-### Error Handling
-
-- Try-catch blocks around rule execution
-- Graceful degradation if rule fails
-- Console warnings for debugging
-- Null checks for missing data
+- MV3 content scripts cannot import extension modules; `content.js` reads from `chrome.storage` and uses messaging.
+- Custom JS executes via `userScripts` in page world; results are bridged with DOM events.
+- Event delegation minimizes per‑element listeners; overlay sizing/positioning avoids relayouts.
 
 ## Summary
 
-This implementation provides a powerful and flexible system for users to define custom rules for finding higher-quality images. It maintains the extension's simplicity while adding advanced functionality for power users. The comprehensive documentation and test page make it easy for users to understand and create their own rules.
+The implementation modernizes Imaginex with a robust, user‑script driven rule system, a toggleable built‑in rules framework, and improved UX features like locked zoom and galleries. Documentation and the Options UI provide clear guidance for configuration and testing.

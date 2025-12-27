@@ -8,9 +8,10 @@ A Chromium Manifest V3 extension that displays larger images when hovering over 
 - ⚡ **Fast & Lightweight**: Minimal performance impact with efficient event handling
 - 🎯 **Precise Positioning**: Intelligent positioning that adapts to screen edges
 - 🌙 **Dark Mode Support**: Automatically adapts to system theme preferences
-- ⌨️ **Keyboard Support**: Press Escape to hide the enlarged image
+- ⌨️ **Shortcuts + Locked Zoom**: Assign keyboard/mouse shortcuts to toggle locked zoom, zoom in/out; press Escape to hide
 - 📱 **Responsive**: Works on any screen size
 - 🎨 **Custom Rules**: Define rules to find higher-quality images for specific elements (e.g., YouTube thumbnails)
+- 🖼️ **Gallery Support**: Custom rules can return multiple URLs; navigate with arrow keys or on-screen controls
 - ☁️ **Cloud Sync**: Manually save and load settings to/from Google Drive
 
 ## How It Works
@@ -19,7 +20,8 @@ A Chromium Manifest V3 extension that displays larger images when hovering over 
 2. **Threshold**: Only images scaled down by more than 20% trigger the enlargement
 3. **Display**: After a 300ms delay, the full-size image appears near your cursor
 4. **Positioning**: The overlay intelligently positions itself to stay within the viewport
-5. **Hide**: Moving away, scrolling, clicking, or pressing Escape hides the overlay
+5. **Zoom**: Toggle locked zoom mode via shortcut; pan with drag and zoom using shortcuts or mouse wheel
+6. **Hide**: Moving away, scrolling, clicking, or pressing Escape hides the overlay
 
 ## Installation
 
@@ -72,6 +74,7 @@ imagus/
 - **Hover Delay**: 300ms delay prevents accidental triggers
 - **Image Caching**: Leverages browser's native image caching
 - **Lazy Positioning**: Only calculates position when needed
+- **Event Delegation**: Single listeners for entire document to reduce overhead
 
 ### Browser Support
 
@@ -86,6 +89,7 @@ imagus/
 
 - **Hover Duration**: Hold your mouse over an image for ~300ms to see the enlargement
 - **Movement**: Small mouse movements won't hide the overlay, but leaving the image will
+- **Locked Zoom**: Assign a shortcut in Options → Shortcuts to toggle locked zoom; drag to pan; use wheel or shortcuts to zoom
 - **Keyboard**: Press `Esc` to quickly hide any enlarged image
 - **Scrolling**: Scroll to automatically hide overlays
 
@@ -117,6 +121,9 @@ const SCALE_THRESHOLD = 1.2; // Minimum scale factor (20% smaller) to trigger
 - **Size Threshold**: Adjust the ratio checks in `isImageScaledDown()`
 - **Styling**: Modify `styles.css` or the inline styles in `content.js`
 - **Positioning**: Adjust the logic in `positionOverlay()`
+- **Built-in Rules**: Add/toggle rules in `settings.js` and gate behavior in `content.js` via `isRuleEnabled(id)`
+- **Shortcuts**: Configure in Options → Shortcuts; content reads and applies bindings live
+- **Custom Rules**: Use user scripts that call `returnURL(url)` or `returnElement(el)`; see CUSTOM_RULES.md
 
 ## Settings & Options Page
 
@@ -124,36 +131,45 @@ An options page (`options.html`) has been added to manage user-configurable pref
 
 Current settings:
 
-- **Theme** (light / dark / system) – currently affects options UI, future overlay styling
+- **Theme** (light / dark / system) – affects options UI; future overlay styling
 - **Hover Delay (ms)** – overrides the delay before enlargement
 - **Zoom Factor** – placeholder for future manual scaling adjustments
 - **Prefetch Larger Image** – placeholder for future high‑res preloading
-- **Custom Rules** – define custom rules to find higher-quality images for specific elements
+- **Enable Animations** – toggle transitions for overlay
+- **Shortcuts** – assign up to two keyboard/mouse shortcuts per action (locked zoom toggle, zoom in/out)
+- **Built-in Rules** – enable/disable detection behaviors and site-specific CSS fixes; edit per‑rule allowed/excluded domains
+- **Custom Rules** – define JavaScript rules that return a URL or element; includes rule tester
+- **Cloud Sync** – manual save/load of settings to Google Drive appData
 
 ### Custom Rules
 
-Custom rules allow you to extract higher-quality images from elements that don't have proper image tags or have low-quality images. For example, you can configure the extension to fetch high-resolution YouTube thumbnails.
+Custom rules allow you to extract higher-quality images from elements that don't have proper image tags or have low-quality images. Rules provide a `userScript` that runs in a sandboxed page context and must call `returnURL(url)` or `returnElement(el)`. Rules can also return an array of URLs to enable gallery navigation.
 
 Each rule consists of:
 
 - **CSS Selector**: Matches specific elements on the page
-- **URL Template**: Template for generating the high-quality image URL with placeholders
-- **Extract Rules (JSON)**: CSP-safe extractor steps (regex/attribute based) that produce variables for the template
+- **Custom JavaScript**: A small snippet using the provided context (`ctx`, `trigger`, `log`) that calls `returnURL(url)` or `returnElement(el)`
+- **Allowed/Excluded Domains (optional)**: Limit rule execution by domain (supports wildcards)
 
-**Example**: YouTube Video Thumbnails
+**Example**: YouTube Video Thumbnails (userScript)
 
-```text
 Selector:
+
+```
 a#thumbnail img[src*="i.ytimg.com"]
+```
 
-URL Template:
-https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp
+Custom JavaScript:
 
-Extract Rules (JSON):
-[
-    {"var":"videoId","regex":"\\/vi(?:_webp)?\\/([^\\/]+)","sources":[{"type":"src"}]},
-    {"var":"videoId","regex":"[?&]v=([^&]+)","sources":[{"type":"href"}]}
-]
+```
+/* globals ctx, trigger, returnURL */
+(() => {
+    const m = (ctx.src || '').match(/\/(?:vi|vi_webp)\/([A-Za-z0-9_-]{11})/)
+                || (ctx.href || '').match(/[?&]v=([A-Za-z0-9_-]{11})/);
+    const id = m && m[1];
+    if (!id) return;
+    returnURL('https://i.ytimg.com/vi/' + id + '/maxresdefault.jpg');
+})();
 ```
 
 See [CUSTOM_RULES.md](CUSTOM_RULES.md) for detailed documentation and more examples.
@@ -163,7 +179,8 @@ Implementation notes:
 - All settings are stored locally in `chrome.storage.local` under a single key (`__settings_v1`).
 - The module `settings.js` provides a small API: `loadSettings()`, `updateSettings(patch)`, `getSetting(key)`, and `subscribe(cb)`.
 - `content.js` reads settings from `chrome.storage.local` and applies updates via `chrome.storage.onChanged`.
-- A future cloud sync layer (e.g., Firestore) can wrap or extend `settings.js` without changing callers.
+- Custom rules execute via background `userScripts` bridge; results are signaled back with DOM CustomEvents.
+- Cloud sync uses Google Drive appData via OAuth flow.
 
 ## Manual Cloud Sync
 

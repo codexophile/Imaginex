@@ -638,7 +638,7 @@
             <h2>Custom Rules</h2>
             <p style="margin-top:0; font-size:13px; opacity:.8;">
               Define custom rules to find higher-quality images for specific elements.
-              For example, find maxresdefault thumbnails for YouTube videos or high-res product images.
+              For example, find maxresdefault thumbnails for YouTube videos, high-res product images, or return a set of URLs to browse as a gallery.
             </p>
 
             <div class="custom-rules-list" id="customRulesList">
@@ -673,6 +673,7 @@
                       <p><strong>Return a URL or Element:</strong></p>
                       <ul>
                         <li><code>returnURL(url)</code> — Return an image URL string</li>
+                        <li><code>returnURL([url1, url2, ...])</code> — Return multiple URLs to enable gallery navigation</li>
                         <li><code>returnElement(el)</code> — Return an img/picture element (extension auto-picks best
                           srcset)</li>
                       </ul>
@@ -694,9 +695,9 @@ if (videoId) returnURL('https://i.ytimg.com/vi/' + videoId[1] + '/maxres.jpg');<
                   </span>
                 </label>
                 <textarea id="ruleUserScript" spellcheck="false"
-                  placeholder='// Use returnURL(url) or returnElement(el)\n// Available: ctx.selector, ctx.src, ctx.href, trigger, log()'></textarea>
+                  placeholder='// Use returnURL(url), returnURL([url1, url2]), or returnElement(el)\n// Available: ctx.selector, ctx.src, ctx.href, trigger, log()'></textarea>
                 <div class="help-text">
-                  <strong>Required:</strong> <code>returnURL(url)</code> or <code>returnElement(el)</code>
+                  <strong>Required:</strong> <code>returnURL(url)</code>, <code>returnURL([urls])</code>, or <code>returnElement(el)</code>
                   <br>
                   <strong>Context:</strong> <code>ctx</code> (selector, src, href), <code>trigger</code> (DOM element),
                   <code>log()</code>

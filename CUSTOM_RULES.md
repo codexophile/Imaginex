@@ -2,83 +2,25 @@
 
 ## Overview
 
-Custom rules allow you to define how the extension should find higher-quality images for specific elements on web pages. This is useful when:
-
-- Elements don't have image tags but link to images
-- Images are low quality but better versions exist at predictable URLs
-- You want to extract images from complex page structures
+Custom rules let you define how the extension finds higher‑quality images for specific elements. They run a small, sandboxed JavaScript snippet and must return either a URL string or an element for the extension to display.
 
 ## How Custom Rules Work
 
-Each custom rule has three main components:
+Each rule has:
 
-### 1. **CSS Selector** (Required)
+1. **CSS Selector** (required): Which elements to match.
+2. **Custom JavaScript** (required): Calls `returnURL(url)` or `returnElement(el)`.
+3. **Domains (optional)**: `Allowed` and `Excluded` domains (supports wildcards).
 
-Defines which elements the rule should match. Examples:
+### JavaScript Context
 
-- `a#thumbnail img[src*="ytimg.com"]` - YouTube thumbnail images
-- `div.product-image` - Product images in a specific div
-- `a[href*="instagram.com"] img` - Images in Instagram links
+- `ctx.selector`: The selector that matched
+- `ctx.src`: Element `src`/`currentSrc` if present
+- `ctx.href`: Element `href` or closest link `href`
+- `trigger`: DOM element that matched
+- `log(...args)`: Debug helper (outputs to console)
 
-### 2. **URL Template** (Optional)
-
-A template for generating the high-quality image URL. Use placeholders in curly braces `{}` that will be replaced with extracted variables. Examples:
-
-- `https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp`
-- `https://example.com/images/{productId}/large.jpg`
-
-### 3. **Extract Rules (JSON)** (Optional)
-
-Manifest V3 blocks running user-provided JavaScript (CSP blocks `unsafe-eval`), so rules use CSP-safe extractors.
-
-An extractor is a JSON array. Each step:
-
-- reads a value from one or more sources (`src`, `href`, `attr`, `closestAttr`)
-- runs a regex against it
-- stores the first capture group into a variable named by `var`
-
-Advanced:
-
-- You can set `mode` to `"srcsetBest"` to pick the highest-quality URL from a `srcset`-style string.
-- You can use a source of type `closestQueryAttr` to extract from nearby DOM structures:
-  it finds `element.closest(closest)` then `querySelector(selector)` within it, then reads an attribute/property by `name`.
-- You can use a source of type `xpath` to extract values via XPath evaluated relative to the matched element.
-
-### XPath Shorthand (Optional)
-
-If you find the JSON verbose, the Options UI also accepts a shorthand format:
-
-- One step per line
-- Optional assignment: `varName = ...` (defaults to `url`)
-- Optional fallback: `expr1 || expr2 || expr3`
-- Optional mode: append `| srcsetBest`
-
-Examples:
-
-```text
-# pick best entry from a srcset string
-url = xpath("ancestor::div[contains(@class,'relative')][1]//picture/source[@type='image/webp']/@data-srcset") | srcsetBest
-
-# fall back to img src if the srcset isn't present
-url = xpath("ancestor::div[contains(@class,'relative')][1]//picture/source[@type='image/webp']/@srcset") || xpath("ancestor::div[contains(@class,'relative')][1]//picture/img/@src")
-```
-
-### CSS Shorthand (Optional)
-
-If you prefer CSS selectors:
-
-```text
-# within the matched element, querySelector then read attribute
-url = qs("picture source[type='image/webp']@data-srcset") | srcsetBest
-
-# find closest ancestor then query within it, read attribute
-url = closest("div.relative.group", "picture img", "src")
-```
-
-Built-in variables are always available:
-
-- `{src}`: element `src`/`currentSrc`
-- `{href}`: element `href` or closest link `href`
+You can also return an array of URLs to enable gallery navigation.
 
 ## Examples
 
@@ -90,35 +32,21 @@ Built-in variables are always available:
 a#thumbnail img[src*="i.ytimg.com"]
 ```
 
-**URL Template:**
+**Custom JavaScript:**
 
-```
-https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp
-```
-
-**Extract Rules (JSON):**
-
-```json
-[
-  {
-    "var": "videoId",
-    "regex": "\\/vi(?:_webp)?\\/([^\\/]+)",
-    "sources": [{ "type": "src" }]
-  },
-  {
-    "var": "videoId",
-    "regex": "[?&]v=([^&]+)",
-    "sources": [{ "type": "href" }]
-  },
-  {
-    "var": "videoId",
-    "regex": "\\/(?:shorts|embed)\\/([^?\\/]+)",
-    "sources": [{ "type": "href" }]
-  }
-]
+```js
+/* globals ctx, returnURL */
+(() => {
+  const m =
+    (ctx.src || '').match(/\/(?:vi|vi_webp)\/([A-Za-z0-9_-]{11})/) ||
+    (ctx.href || '').match(/[?&]v=([A-Za-z0-9_-]{11})/);
+  const id = m && m[1];
+  if (!id) return;
+  returnURL('https://i.ytimg.com/vi/' + id + '/maxresdefault.jpg');
+})();
 ```
 
-### Example 2: Twitter/X Images
+### Example 2: Twitter/X Images (rewrite URL)
 
 **Selector:**
 
@@ -126,225 +54,57 @@ https://i.ytimg.com/vi_webp/{videoId}/maxresdefault.webp
 img[src*="twimg.com"]
 ```
 
-**URL Template:**
+**Custom JavaScript:**
 
-```
-{url}
-```
-
-**Extract Rules (JSON):**
-
-This example extracts the full URL and rewrites it by matching the parts you care about.
-
-```json
-[
-  {
-    "var": "url",
-    "regex": "^(https?:\\/\\/[^?#]+)(?:\\?.*)?$",
-    "sources": [{ "type": "src" }]
-  }
-]
+```js
+/* globals ctx, returnURL */
+(() => {
+  const base = (ctx.src || '').replace(/\?.*$/, '');
+  if (!base) return;
+  returnURL(base + '?format=jpg&name=orig');
+})();
 ```
 
-Then change the template on sites like X to the desired canonical form manually, e.g. append `?format=jpg&name=orig` in the template:
-
-```
-{url}?format=jpg&name=orig
-```
-
-### Example 3: Return Full URL (No Template Logic)
+### Example 3: Product Gallery (multiple URLs)
 
 **Selector:**
 
 ```css
-div.product-thumb
+div.product-gallery
 ```
 
-To return a full URL without composing multiple placeholders, set the URL template to `{url}` and extract a `url` variable.
+**Custom JavaScript:**
 
-**URL Template:**
-
-```
-{url}
-```
-
-**Extract Rules (JSON):**
-
-```json
-[
-  {
-    "var": "productId",
-    "regex": "^(.+)$",
-    "sources": [{ "type": "attr", "name": "data-product-id" }]
-  }
-]
+```js
+/* globals trigger, returnURL */
+(() => {
+  const urls = Array.from(trigger.querySelectorAll('img'))
+    .map(img => img.currentSrc || img.src)
+    .filter(Boolean);
+  if (urls.length) returnURL(urls);
+})();
 ```
 
-Then compose the final URL with the template:
+## Testing Rules
 
-```
-https://cdn.example.com/products/{productId}/highres.jpg
-```
-
-### Example 4: Instagram Posts
-
-**Selector:**
-
-```css
-article img[src*="cdninstagram.com"]
-```
-
-**URL Template:**
-
-```
-{highResUrl}
-```
-
-Instagram URL rewriting is usually site-specific; prefer extracting stable identifiers from attributes and composing the CDN URL via template.
-
-## API Configuration (Optional)
-
-For cases where high-quality images are only available through external APIs (like YouTube profile pictures, Twitter user avatars, etc), you can use API configuration instead of URL templates.
-
-### API Structure
-
-```json
-{
-  "url": "https://api.example.com?id={extractedVar}&key={settings.apiKeyName}",
-  "path": "data.image.url",
-  "headers": { "Authorization": "Bearer {settings.token}" }
-}
-```
-
-- **url** (required): API endpoint URL with placeholders
-- **path** (optional): JSON path to extract from response (e.g., `items[0].snippet.thumbnails.high.url`)
-- **headers** (optional): Custom headers object with optional placeholders
-
-### Placeholder Types
-
-1. **Extracted variables**: `{variableName}` - from Extract Rules
-2. **Settings keys**: `{settings.keyName}` - from API Keys section in Options
-
-### Example: YouTube Channel Profile Pictures
-
-YouTube channel profile pictures don't expose high-resolution sources in the DOM, but they're available via the YouTube Data API v3.
-
-**Step 1: Get a YouTube Data API Key**
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing
-3. Enable "YouTube Data API v3"
-4. Create credentials → API Key
-5. Add the key in the extension's Options page → API Keys section:
-   - Name: `youtubeApiKey`
-   - Value: Your API key
-
-**Step 2: Create the Rule**
-
-- **Name**: YouTube Channel Avatars
-- **CSS Selector**: `img#avatar[src*="yt3.ggpht.com"]`
-- **Extract Rules** (CSS shorthand):
-  ```
-  channelId = qs("a#avatar-link@href") ~ "/channel/([^/]+)"
-  ```
-  Or (JSON):
-  ```json
-  [
-    {
-      "var": "channelId",
-      "regex": "/channel/([^/]+)",
-      "sources": [
-        {
-          "type": "cssQueryAttr",
-          "closest": "ytd-video-owner-renderer",
-          "selector": "a#avatar-link",
-          "name": "href"
-        }
-      ]
-    }
-  ]
-  ```
-- **API Configuration**:
-  ```json
-  {
-    "url": "https://www.googleapis.com/youtube/v3/channels?part=snippet&id={channelId}&key={settings.youtubeApiKey}",
-    "path": "items[0].snippet.thumbnails.high.url"
-  }
-  ```
-
-Now when you hover over channel avatars, the extension will:
-
-1. Extract the channel ID from the avatar link
-2. Call YouTube Data API with your key
-3. Extract the high-quality thumbnail URL from the response
-4. Display the enlarged image
-
-### API Features
-
-- **Caching**: API responses are cached for 5 minutes to reduce unnecessary requests
-- **Rate Limiting**: 10 requests per minute per domain to avoid hitting API limits
-- **Security**: API keys are stored locally and never leave your browser except in API calls you configure
-
-### Other API Examples
-
-**Twitter User Avatars** (if you have Twitter API access):
-
-```json
-{
-  "url": "https://api.twitter.com/2/users/by/username/{username}?user.fields=profile_image_url",
-  "path": "data.profile_image_url",
-  "headers": { "Authorization": "Bearer {settings.twitterBearerToken}" }
-}
-```
-
-**Generic REST API**:
-
-```json
-{
-  "url": "https://api.service.com/v1/images/{imageId}",
-  "path": "high_res_url"
-}
-```
+- Use the Options page “Test on Current Tab” button; it sends your selector/script to the active tab and lists matched elements and derived URLs.
+- You can also open the popup on a page and run the tester there.
 
 ## Tips and Best Practices
 
-1. **Test Your Selectors**: Use browser DevTools to test your CSS selectors before adding them to a rule.
-
-2. **Specific is Better**: Make your selectors as specific as possible to avoid unwanted matches.
-
-3. **Return null on Failure**: If extraction can't find the needed variables, the URL template will keep `{placeholders}` and the rule will be ignored.
-
-4. **Check for Elements**: Use optional chaining (`?.`) when accessing properties that might not exist.
-
-5. **URL Validation**: The extension doesn't validate URLs. Make sure your URL template and extracted variables produce valid URLs.
-
-6. **Performance**: Keep regexes simple. Extraction can run often.
-
-7. **Enable/Disable Rules**: Use the toggle in the options page to temporarily disable rules without deleting them.
-
-## Common Placeholders
-
-When using URL templates, common placeholder patterns include:
-
-- `{videoId}` - Video identifiers
-- `{productId}` - Product identifiers
-- `{userId}` - User identifiers
-- `{imageId}` - Image identifiers
-- `{size}` - Size parameters (e.g., "large", "1920x1080")
-- `{quality}` - Quality indicators (e.g., "hq", "maxres")
-
-You can use any placeholder name that makes sense for your use case.
+- Be specific with selectors to avoid unexpected matches.
+- Always guard for missing data (e.g., if no ID found, just `return;`).
+- Prefer returning an element when you want the extension to auto‑select the best `srcset`.
+- Use domain filters when a rule is site‑specific.
 
 ## Debugging
 
-Check the browser console for log messages when hovering over elements:
+Open DevTools and watch console logs:
 
-- "Element matches custom rule: [Rule Name]"
-- "Custom rule returned URL: [URL]"
-- "Custom rule generated URL: [URL]"
-
-- "Not all placeholders replaced in URL template: [URL]"
+- `Custom rule matched:` when your selector triggers
+- `Custom rule returned URL:` when your script returns
+- Errors thrown in your script appear as `imagus:userScriptError`
 
 ## Security Note
 
-Because MV3 blocks executing custom JavaScript, extractors are declarative and CSP-safe. You should still only add rules you trust, since overly broad selectors can match unexpected elements.
+Custom JS runs in a sandboxed page world via the `userScripts` API. It cannot access extension internals. Only add rules you trust; overly broad selectors may match unintended elements.

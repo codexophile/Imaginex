@@ -37,6 +37,10 @@
   const minZoom = 0.5; // 50% minimum zoom
   const maxZoom = 3; // 300% maximum zoom
 
+  // Gallery state
+  let galleryUrls = []; // Array of URLs when showing a gallery
+  let galleryCurrentIndex = 0; // Current image index in gallery
+
   const SETTINGS_INTERNAL_KEY = '__settings_v1';
 
   function injectLockedZoomStyles() {
@@ -386,6 +390,61 @@
     }
   }
 
+  // Gallery navigation functions
+  function showGalleryImage(index) {
+    if (!Array.isArray(galleryUrls) || galleryUrls.length === 0) {
+      return;
+    }
+    if (index < 0) index = galleryUrls.length - 1;
+    if (index >= galleryUrls.length) index = 0;
+    
+    galleryCurrentIndex = index;
+    
+    if (!currentImg) return;
+    
+    const url = galleryUrls[index];
+    const counter = document.getElementById('imagus-gallery-counter');
+    if (counter) {
+      counter.textContent = `${index + 1} / ${galleryUrls.length}`;
+    }
+    
+    console.log(`Gallery: showing image ${index + 1} of ${galleryUrls.length}`);
+    
+    // Reload overlay with new image
+    if (hoverOverlay) {
+      const overlayImg = hoverOverlay.querySelector('img');
+      const lastMouseX = hoverOverlay.style.left ? parseInt(hoverOverlay.style.left) : 0;
+      const lastMouseY = hoverOverlay.style.top ? parseInt(hoverOverlay.style.top) : 0;
+      
+      overlayImg.style.opacity = '0';
+      setOverlayLoading(true);
+      
+      overlayImg.onload = () => {
+        setOverlayLoading(false);
+        overlayImg.style.opacity = '1';
+      };
+      
+      overlayImg.onerror = () => {
+        setOverlayLoading(false);
+        overlayImg.style.opacity = '0.5';
+      };
+      
+      overlayImg.src = url;
+    }
+  }
+
+  function nextGalleryImage() {
+    if (galleryUrls.length > 1) {
+      showGalleryImage(galleryCurrentIndex + 1);
+    }
+  }
+
+  function prevGalleryImage() {
+    if (galleryUrls.length > 1) {
+      showGalleryImage(galleryCurrentIndex - 1);
+    }
+  }
+
   // Apply or remove animation classes/styles based on settings
   function applyAnimationSettings() {
     if (ENABLE_ANIMATIONS) {
@@ -479,7 +538,17 @@
             display: none;
             border-radius: 4px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            overflow: visible;
+        `;
+
+    const imgContainer = document.createElement('div');
+    imgContainer.id = 'imagus-img-container';
+    imgContainer.style.cssText = `
+            position: relative;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
+            border-radius: 4px;
         `;
 
     const img = document.createElement('img');
@@ -493,7 +562,80 @@
           max-height: none;
         `;
 
-    overlay.appendChild(img);
+    imgContainer.appendChild(img);
+    overlay.appendChild(imgContainer);
+    
+    // Gallery controls container (hidden by default)
+    const galleryControls = document.createElement('div');
+    galleryControls.id = 'imagus-gallery-controls';
+    galleryControls.style.cssText = `
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 20px;
+            z-index: 1000;
+            pointer-events: auto;
+        `;
+    
+    // Previous button
+    const prevBtn = document.createElement('button');
+    prevBtn.id = 'imagus-gallery-prev';
+    prevBtn.innerHTML = '◀';
+    prevBtn.style.cssText = `
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px 8px;
+            transition: opacity 0.2s;
+        `;
+    prevBtn.onclick = (e) => {
+      e.stopPropagation();
+      prevGalleryImage();
+    };
+    
+    // Image counter
+    const counter = document.createElement('span');
+    counter.id = 'imagus-gallery-counter';
+    counter.style.cssText = `
+            color: white;
+            font-size: 12px;
+            font-family: sans-serif;
+            min-width: 50px;
+            text-align: center;
+        `;
+    counter.textContent = '1 / 1';
+    
+    // Next button
+    const nextBtn = document.createElement('button');
+    nextBtn.id = 'imagus-gallery-next';
+    nextBtn.innerHTML = '▶';
+    nextBtn.style.cssText = `
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px 8px;
+            transition: opacity 0.2s;
+        `;
+    nextBtn.onclick = (e) => {
+      e.stopPropagation();
+      nextGalleryImage();
+    };
+    
+    galleryControls.appendChild(prevBtn);
+    galleryControls.appendChild(counter);
+    galleryControls.appendChild(nextBtn);
+    overlay.appendChild(galleryControls);
+    
     document.body.appendChild(overlay);
 
     return overlay;
@@ -858,7 +1000,9 @@
               resolved = true;
               document.removeEventListener('imagus:userScriptURL', onOk);
               document.removeEventListener('imagus:userScriptError', onErr);
-              resolve(String(e.detail || ''));
+              const detail = e.detail;
+              // Support both single URL (string) and array of URLs
+              resolve(detail);
             };
             const onErr = e => {
               if (resolved) return;
@@ -915,14 +1059,29 @@
             }, 3000);
           });
 
-          if (urlFromScript && /^https?:\/\//i.test(urlFromScript)) {
+          // Handle array of URLs (gallery mode)
+          if (Array.isArray(urlFromScript) && urlFromScript.length > 0) {
+            // Filter to valid URLs
+            const validUrls = urlFromScript.filter(url => 
+              typeof url === 'string' && /^https?:\/\//i.test(url)
+            );
+            if (validUrls.length > 0) {
+              try {
+                element.removeAttribute('data-imagus-trigger');
+              } catch (_) {}
+              return { urls: validUrls, currentIndex: 0 };
+            }
+          }
+
+          // Handle single URL (string)
+          if (urlFromScript && typeof urlFromScript === 'string' && /^https?:\/\//i.test(urlFromScript)) {
             try {
               element.removeAttribute('data-imagus-trigger');
             } catch (_) {}
             return urlFromScript;
           }
           // If we received a derived URL from element return
-          if (urlFromScript && !urlFromScript.includes('{')) {
+          if (urlFromScript && typeof urlFromScript === 'string' && !urlFromScript.includes('{')) {
             try {
               element.removeAttribute('data-imagus-trigger');
             } catch (_) {}
@@ -1033,6 +1192,33 @@
 
     // Reset zoom level when showing a new image
     currentZoomLevel = 1;
+
+    // Handle gallery objects (from checkCustomRules returning array)
+    if (customUrl && typeof customUrl === 'object' && customUrl.urls && Array.isArray(customUrl.urls)) {
+      galleryUrls = customUrl.urls;
+      galleryCurrentIndex = customUrl.currentIndex || 0;
+      const actualUrl = galleryUrls[galleryCurrentIndex];
+      
+      // Show gallery controls
+      const galleryControls = hoverOverlay.querySelector('#imagus-gallery-controls');
+      if (galleryControls) {
+        galleryControls.style.display = galleryUrls.length > 1 ? 'flex' : 'none';
+        const counter = hoverOverlay.querySelector('#imagus-gallery-counter');
+        if (counter) {
+          counter.textContent = `${galleryCurrentIndex + 1} / ${galleryUrls.length}`;
+        }
+      }
+      
+      return showEnlargedImage(img, mouseX, mouseY, actualUrl);
+    } else {
+      // Hide gallery controls for non-gallery images
+      const galleryControls = hoverOverlay.querySelector('#imagus-gallery-controls');
+      if (galleryControls) {
+        galleryControls.style.display = 'none';
+      }
+      galleryUrls = [];
+      galleryCurrentIndex = 0;
+    }
 
     const overlayImg = hoverOverlay.querySelector('img');
     const bestImageSource = customUrl || getBestImageSource(img);
@@ -1613,6 +1799,26 @@
             hoverOverlay.style.display === 'block'
           ) {
             zoomOut();
+            event.preventDefault();
+            if (event.stopImmediatePropagation)
+              event.stopImmediatePropagation();
+            event.stopPropagation();
+            return;
+          }
+        }
+
+        // Gallery navigation with arrow keys
+        if (hoverOverlay && hoverOverlay.style.display === 'block' && galleryUrls.length > 1) {
+          if (event.key === 'ArrowRight') {
+            nextGalleryImage();
+            event.preventDefault();
+            if (event.stopImmediatePropagation)
+              event.stopImmediatePropagation();
+            event.stopPropagation();
+            return;
+          }
+          if (event.key === 'ArrowLeft') {
+            prevGalleryImage();
             event.preventDefault();
             if (event.stopImmediatePropagation)
               event.stopImmediatePropagation();
