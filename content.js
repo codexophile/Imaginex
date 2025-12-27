@@ -266,34 +266,41 @@
   }
 
   function handleLockedZoomMouseDown(e) {
-    // Check for mouse zoom shortcut first
+    // If overlay isn't visible, ignore
+    if (!hoverOverlay || hoverOverlay.style.display !== 'block') return;
+
+    // In locked zoom mode, right-click should show the context menu and never toggle/exit
+    if (lockedZoomMode) {
+      // Allow browser context menu on right-click
+      if (e.button === 2) {
+        return; // Do not prevent default or stop propagation
+      }
+      // Start drag only when clicking inside the overlay with left button
+      if (e.button === 0 && hoverOverlay.contains(e.target)) {
+        lockedZoomDragging = true;
+        wasActualDrag = false; // Reset on new drag start
+        lockedZoomDragStartX = e.clientX;
+        lockedZoomDragStartY = e.clientY;
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      return;
+    }
+
+    // Not locked: check if this mouse event matches the zoom shortcut to enter locked mode
     const zoomBindings = shortcutBindings.zoomFullResolution || [];
     const isZoomShortcut = zoomBindings.some(b =>
       bindingMatchesMouseEvent(b, e)
     );
-
     if (isZoomShortcut) {
-      if (hoverOverlay && hoverOverlay.style.display === 'block') {
-        if (lockedZoomMode) {
-          exitLockedZoomMode();
-        } else {
-          enterLockedZoomMode();
-        }
-        e.preventDefault();
-        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-        e.stopPropagation();
-        return;
-      }
+      enterLockedZoomMode();
+      // If this was a right-click, consume the upcoming contextmenu once
+      if (e.button === 2) suppressContextMenuOnce = true;
+      e.preventDefault();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      e.stopPropagation();
+      return;
     }
-
-    // Otherwise, handle drag if in locked zoom mode
-    if (!lockedZoomMode || !hoverOverlay) return;
-    lockedZoomDragging = true;
-    wasActualDrag = false; // Reset on new drag start
-    lockedZoomDragStartX = e.clientX;
-    lockedZoomDragStartY = e.clientY;
-    e.preventDefault();
-    e.stopPropagation();
   }
 
   function handleLockedZoomMouseMove(e) {
