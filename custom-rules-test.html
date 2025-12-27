@@ -216,13 +216,70 @@ return element.dataset.hiresUrl || null;
     </ul>
   </div>
 
+  <div class="section">
+    <h2>Gallery Support Test</h2>
+    <p>Hover over images to see the extension. Gallery-enabled rules will show navigation controls (← →) and a counter
+      (e.g., "1 / 5").</p>
+
+    <h3>Sample Gallery (Multiple Image URLs)</h3>
+    <p>Simulate a gallery by returning an array of URLs from a custom rule. The extension will show:</p>
+    <ul>
+      <li>Previous button (◀) to go to the previous image</li>
+      <li>Image counter showing current position (e.g., "2 / 5")</li>
+      <li>Next button (▶) to go to the next image</li>
+      <li>Keyboard navigation: use ← and → arrow keys to browse</li>
+    </ul>
+
+    <h3>Example Gallery Rule Configuration:</h3>
+    <pre><code>
+Selector: img.gallery-thumbnail
+Custom JS:
+// Return multiple image URLs for gallery mode
+const imageUrls = [
+  'https://example.com/gallery/1.jpg',
+  'https://example.com/gallery/2.jpg',
+  'https://example.com/gallery/3.jpg',
+  'https://example.com/gallery/4.jpg'
+];
+return imageUrls;  // Return array for gallery mode
+        </code></pre>
+
+    <h3>Gallery Test Images</h3>
+    <p><small>Note: These are placeholder images. Replace URLs in your custom rules with real image URLs.</small></p>
+    <div class="test-item">
+      <img
+        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect fill='%23ddd'/%3E%3Ctext x='50%' y='50%' text-anchor='middle' dy='.3em' font-size='14' fill='%23999'%3EGallery 1/4%3C/text%3E%3C/svg%3E"
+        class="gallery-thumbnail" alt="Gallery image 1" title="Hover to see gallery - use arrow keys to navigate">
+      <p>Gallery Image 1</p>
+    </div>
+    <div class="test-item">
+      <img
+        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect fill='%23ccc'/%3E%3Ctext x='50%' y='50%' text-anchor='middle' dy='.3em' font-size='14' fill='%23999'%3EGallery 2/4%3C/text%3E%3C/svg%3E"
+        class="gallery-thumbnail" alt="Gallery image 2" title="Hover to see gallery - use arrow keys to navigate">
+      <p>Gallery Image 2</p>
+    </div>
+    <div class="test-item">
+      <img
+        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect fill='%23bbb'/%3E%3Ctext x='50%' y='50%' text-anchor='middle' dy='.3em' font-size='14' fill='%23999'%3EGallery 3/4%3C/text%3E%3C/svg%3E"
+        class="gallery-thumbnail" alt="Gallery image 3" title="Hover to see gallery - use arrow keys to navigate">
+      <p>Gallery Image 3</p>
+    </div>
+    <div class="test-item">
+      <img
+        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect fill='%23aaa'/%3E%3Ctext x='50%' y='50%' text-anchor='middle' dy='.3em' font-size='14' fill='%23999'%3EGallery 4/4%3C/text%3E%3C/svg%3E"
+        class="gallery-thumbnail" alt="Gallery image 4" title="Hover to see gallery - use arrow keys to navigate">
+      <p>Gallery Image 4</p>
+    </div>
+  </div>
+
   <script>
     console.log( 'Custom Rules Test Page loaded' );
     console.log( 'Test elements:', {
       youtubeThumbs: document.querySelectorAll( 'a#thumbnail img' ).length,
       productImages: document.querySelectorAll( 'img.product-image[data-product-id]' ).length,
       resizableImages: document.querySelectorAll( 'img.resizable-image' ).length,
-      bgDivs: document.querySelectorAll( 'div.bg-image-div[data-hires-url]' ).length
+      bgDivs: document.querySelectorAll( 'div.bg-image-div[data-hires-url]' ).length,
+      galleryThumbs: document.querySelectorAll( 'img.gallery-thumbnail' ).length
     } );
   </script>
 </body>
