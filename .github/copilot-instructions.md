@@ -1,1 +1,1 @@
-Every time we add/modify/remove a feature of this extension make sure to update the relevant documentation. Also ensure that all user interfaces get updated with helpful and complete but concise descriptions and help texts so users can understand how to use the features.
+Every time we add/modify/remove a feature of this extension make sure to update the relevant documentations. Also ensure that all user interfaces get updated with helpful and complete but concise descriptions and help texts so users can understand how to use the features.
