@@ -23,6 +23,7 @@
   let lockedZoomBorder = null;
   let suppressClickExitOnce = false;
   let wasActualDrag = false;
+  let suppressContextMenuOnce = false;
 
   // Shortcuts state
   let shortcutBindings = {
@@ -622,6 +623,21 @@
           max-width: none;
           max-height: none;
         `;
+
+    // Suppress the browser context menu when interacting with the overlay/image
+    const suppressContextMenu = e => {
+      if (
+        hoverOverlay &&
+        hoverOverlay.style.display === 'block' &&
+        !lockedZoomMode
+      ) {
+        e.preventDefault();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        e.stopPropagation();
+      }
+    };
+    overlay.addEventListener('contextmenu', suppressContextMenu, true);
+    img.addEventListener('contextmenu', suppressContextMenu, true);
 
     imgContainer.appendChild(img);
     overlay.appendChild(imgContainer);
@@ -1817,6 +1833,93 @@
       },
       true
     );
+
+    // Suppress browser context menu anywhere while popup is visible (unless in locked zoom mode)
+    const shouldSuppressContextMenu = () =>
+      !!(
+        hoverOverlay &&
+        hoverOverlay.style.display === 'block' &&
+        !lockedZoomMode
+      );
+
+    const globalContextmenuHandler = event => {
+      if (suppressContextMenuOnce) {
+        suppressContextMenuOnce = false;
+        event.preventDefault();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        event.stopPropagation();
+        return;
+      }
+      if (shouldSuppressContextMenu()) {
+        // console.log('Suppressing context menu while popup visible');
+        event.preventDefault();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        event.stopPropagation();
+      }
+    };
+
+    // Some sites attach capture listeners on window; register at multiple roots
+    window.addEventListener('contextmenu', globalContextmenuHandler, true);
+    document.addEventListener('contextmenu', globalContextmenuHandler, true);
+    if (document.documentElement)
+      document.documentElement.addEventListener(
+        'contextmenu',
+        globalContextmenuHandler,
+        true
+      );
+    if (document.body)
+      document.body.addEventListener(
+        'contextmenu',
+        globalContextmenuHandler,
+        true
+      );
+
+    // Additionally block the right-button mousedown before the browser shows the menu
+    const globalMouseDownSuppressor = event => {
+      if (event.button !== 2) return;
+      if (!hoverOverlay || hoverOverlay.style.display !== 'block') return;
+
+      // If we're not in locked zoom mode, right-click may be a configured shortcut to toggle zoom
+      const zoomBindings = shortcutBindings.zoomFullResolution || [];
+      const isZoomMouseShortcut = zoomBindings.some(b =>
+        bindingMatchesMouseEvent(b, event)
+      );
+
+      if (!lockedZoomMode) {
+        if (isZoomMouseShortcut) {
+          // Enter locked zoom mode on this right-click and suppress context menu for this click
+          enterLockedZoomMode();
+          suppressContextMenuOnce = true;
+          event.preventDefault();
+          if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+          event.stopPropagation();
+          return;
+        }
+        // Not a zoom shortcut: still suppress context menu while popup is visible
+        if (shouldSuppressContextMenu()) {
+          event.preventDefault();
+          if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+          event.stopPropagation();
+        }
+        return;
+      }
+
+      // If locked zoom mode is active, allow context menu normally (do nothing)
+    };
+    window.addEventListener('mousedown', globalMouseDownSuppressor, true);
+    document.addEventListener('mousedown', globalMouseDownSuppressor, true);
+    if (document.documentElement)
+      document.documentElement.addEventListener(
+        'mousedown',
+        globalMouseDownSuppressor,
+        true
+      );
+    if (document.body)
+      document.body.addEventListener(
+        'mousedown',
+        globalMouseDownSuppressor,
+        true
+      );
 
     document.addEventListener(
       'keydown',
