@@ -30,7 +30,24 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             const ctx = ${JSON.stringify(ctxObj)};
             const trigger = (ctx && ctx.triggerSelector) ? document.querySelector(ctx.triggerSelector) : null;
             const returnURL = (u) => {
-              try { document.dispatchEvent(new CustomEvent('imagus:userScriptURL', { detail: String(u) })); } catch (_) {}
+              try {
+                // Allow returning arrays/objects for gallery mode.
+                // Strings still supported for the common single-URL case.
+                let detail = u;
+                if (detail == null) detail = '';
+                else if (typeof detail === 'string') {
+                  // keep as-is
+                } else if (Array.isArray(detail)) {
+                  // keep as-is
+                } else if (typeof detail === 'object') {
+                  // keep as-is (structured clone)
+                } else {
+                  detail = String(detail);
+                }
+                document.dispatchEvent(
+                  new CustomEvent('imagus:userScriptURL', { detail })
+                );
+              } catch (_) {}
             };
             const returnElement = (el) => {
               try {

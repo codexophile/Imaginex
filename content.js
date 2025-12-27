@@ -40,6 +40,63 @@
   // Gallery state
   let galleryUrls = []; // Array of URLs when showing a gallery
   let galleryCurrentIndex = 0; // Current image index in gallery
+  let lastHoverMouseX = 0;
+  let lastHoverMouseY = 0;
+
+  function looksLikeCommaJoinedUrlList(value) {
+    if (typeof value !== 'string') return false;
+    const s = value.trim();
+    return /^https?:\/\/[^\s,]+(\s*,\s*https?:\/\/[^\s,]+)+$/i.test(s);
+  }
+
+  function splitCommaJoinedUrlList(value) {
+    if (!looksLikeCommaJoinedUrlList(value)) return [];
+    return value
+      .split(',')
+      .map(v => v.trim())
+      .filter(v => /^https?:\/\//i.test(v));
+  }
+
+  function setGallery(urls, index = 0) {
+    galleryUrls = Array.isArray(urls) ? urls : [];
+    galleryCurrentIndex = Number.isFinite(index) ? index : 0;
+    if (galleryCurrentIndex < 0) galleryCurrentIndex = 0;
+    if (galleryCurrentIndex >= galleryUrls.length) galleryCurrentIndex = 0;
+  }
+
+  function updateGalleryControls() {
+    if (!hoverOverlay) return;
+    const controls = hoverOverlay.querySelector('#imagus-gallery-controls');
+    if (!controls) return;
+    controls.style.display = galleryUrls.length > 1 ? 'flex' : 'none';
+    const counter = hoverOverlay.querySelector('#imagus-gallery-counter');
+    if (counter && galleryUrls.length) {
+      counter.textContent = `${galleryCurrentIndex + 1} / ${
+        galleryUrls.length
+      }`;
+    }
+  }
+
+  function showGalleryImage(index) {
+    if (!Array.isArray(galleryUrls) || galleryUrls.length === 0) return;
+    if (!currentImg) return;
+    if (index < 0) index = galleryUrls.length - 1;
+    if (index >= galleryUrls.length) index = 0;
+    setGallery(galleryUrls, index);
+    updateGalleryControls();
+    showEnlargedImage(currentImg, lastHoverMouseX, lastHoverMouseY, {
+      urls: galleryUrls,
+      currentIndex: galleryCurrentIndex,
+    });
+  }
+
+  function nextGalleryImage() {
+    if (galleryUrls.length > 1) showGalleryImage(galleryCurrentIndex + 1);
+  }
+
+  function prevGalleryImage() {
+    if (galleryUrls.length > 1) showGalleryImage(galleryCurrentIndex - 1);
+  }
 
   const SETTINGS_INTERNAL_KEY = '__settings_v1';
 
@@ -599,6 +656,7 @@
             font-size: 14px;
             padding: 4px 8px;
             transition: opacity 0.2s;
+          pointer-events: auto;
         `;
     prevBtn.onclick = e => {
       e.stopPropagation();
@@ -614,6 +672,7 @@
             font-family: sans-serif;
             min-width: 50px;
             text-align: center;
+          pointer-events: auto;
         `;
     counter.textContent = '1 / 1';
 
@@ -629,6 +688,7 @@
             font-size: 14px;
             padding: 4px 8px;
             transition: opacity 0.2s;
+          pointer-events: auto;
         `;
     nextBtn.onclick = e => {
       e.stopPropagation();
@@ -999,28 +1059,28 @@
 
           const urlFromScript = await new Promise(resolve => {
             let resolved = false;
+            const cleanup = () => {
+              document.removeEventListener('imagus:userScriptURL', onOk);
+              document.removeEventListener('imagus:userScriptError', onErr);
+              document.removeEventListener('imagus:userScriptElement', onEl);
+            };
             const onOk = e => {
               if (resolved) return;
               resolved = true;
-              document.removeEventListener('imagus:userScriptURL', onOk);
-              document.removeEventListener('imagus:userScriptError', onErr);
-              const detail = e.detail;
-              // Support both single URL (string) and array of URLs
-              resolve(detail);
+              cleanup();
+              // Support string URL or array/object for gallery mode
+              resolve(e.detail);
             };
             const onErr = e => {
               if (resolved) return;
               resolved = true;
-              document.removeEventListener('imagus:userScriptURL', onOk);
-              document.removeEventListener('imagus:userScriptError', onErr);
+              cleanup();
               resolve('');
             };
             const onEl = e => {
               if (resolved) return;
               resolved = true;
-              document.removeEventListener('imagus:userScriptURL', onOk);
-              document.removeEventListener('imagus:userScriptError', onErr);
-              document.removeEventListener('imagus:userScriptElement', onEl);
+              cleanup();
               const sel = String(e.detail || '');
               let url = '';
               try {
@@ -1045,7 +1105,7 @@
             });
             chrome.runtime.sendMessage(
               { type: 'imagus:execUserScript', code: rule.userScript, ctx },
-              res => {
+              () => {
                 // background handles execution; result comes via DOM event
               }
             );
@@ -1053,9 +1113,7 @@
             setTimeout(() => {
               if (resolved) return;
               resolved = true;
-              document.removeEventListener('imagus:userScriptURL', onOk);
-              document.removeEventListener('imagus:userScriptError', onErr);
-              document.removeEventListener('imagus:userScriptElement', onEl);
+              cleanup();
               try {
                 element.removeAttribute('data-imagus-trigger');
               } catch (_) {}
@@ -1202,51 +1260,40 @@
       hoverOverlay = createOverlay();
     }
 
+    lastHoverMouseX = mouseX;
+    lastHoverMouseY = mouseY;
+
     // Reset zoom level when showing a new image
     currentZoomLevel = 1;
 
-    // Handle gallery objects (from checkCustomRules returning array)
+    // Gallery support:
+    // - { urls: [...], currentIndex }
+    // - legacy comma-joined URL list strings
+    let urlToLoad = customUrl;
     if (
       customUrl &&
       typeof customUrl === 'object' &&
-      customUrl.urls &&
       Array.isArray(customUrl.urls)
     ) {
-      galleryUrls = customUrl.urls;
-      galleryCurrentIndex = customUrl.currentIndex || 0;
-      const actualUrl = galleryUrls[galleryCurrentIndex];
-
-      // Show gallery controls
-      const galleryControls = hoverOverlay.querySelector(
-        '#imagus-gallery-controls'
-      );
-      if (galleryControls) {
-        galleryControls.style.display =
-          galleryUrls.length > 1 ? 'flex' : 'none';
-        const counter = hoverOverlay.querySelector('#imagus-gallery-counter');
-        if (counter) {
-          counter.textContent = `${galleryCurrentIndex + 1} / ${
-            galleryUrls.length
-          }`;
-        }
-      }
-
-      return showEnlargedImage(img, mouseX, mouseY, actualUrl);
+      setGallery(customUrl.urls, customUrl.currentIndex);
+      urlToLoad = galleryUrls[galleryCurrentIndex] || null;
+    } else if (Array.isArray(customUrl)) {
+      setGallery(customUrl, 0);
+      urlToLoad = galleryUrls[galleryCurrentIndex] || null;
+    } else if (looksLikeCommaJoinedUrlList(customUrl)) {
+      const split = splitCommaJoinedUrlList(customUrl);
+      setGallery(split, 0);
+      urlToLoad = galleryUrls[galleryCurrentIndex] || null;
     } else {
-      // Hide gallery controls for non-gallery images
-      const galleryControls = hoverOverlay.querySelector(
-        '#imagus-gallery-controls'
-      );
-      if (galleryControls) {
-        galleryControls.style.display = 'none';
-      }
-      galleryUrls = [];
-      galleryCurrentIndex = 0;
+      setGallery([], 0);
     }
 
+    updateGalleryControls();
+
     const overlayImg = hoverOverlay.querySelector('img');
-    const bestImageSource = customUrl || getBestImageSource(img);
-    const bestDimensions = customUrl ? null : getBestImageDimensions(img);
+    const hasCustomUrl = typeof urlToLoad === 'string' && !!urlToLoad;
+    const bestImageSource = hasCustomUrl ? urlToLoad : getBestImageSource(img);
+    const bestDimensions = hasCustomUrl ? null : getBestImageDimensions(img);
 
     overlayImg.alt = img.alt || '';
     overlayImg.style.opacity = '0';
@@ -1256,7 +1303,7 @@
     console.log(
       'Using image source for enlargement:',
       bestImageSource,
-      customUrl ? '(from custom rule)' : '',
+      hasCustomUrl ? '(from custom rule)' : '',
       'from element:',
       img,
       bestDimensions
@@ -1319,7 +1366,7 @@
 
     overlayImg.onerror = () => {
       console.warn('Failed to load enlarged image:', bestImageSource);
-      if (customUrl && !overlayImg.dataset.hasFallbackAttempt) {
+      if (hasCustomUrl && !overlayImg.dataset.hasFallbackAttempt) {
         overlayImg.dataset.hasFallbackAttempt = 'true';
         const fallback = getBestImageSource(img);
         console.warn('Falling back to original image source:', fallback);
@@ -2110,7 +2157,28 @@
         if (customUrl) {
           // Create a temporary img element for the overlay
           const tempImg = document.createElement('img');
-          tempImg.src = customUrl;
+          // Avoid coercing gallery arrays/objects into comma-joined strings.
+          let initialUrl = '';
+          if (typeof customUrl === 'string') {
+            initialUrl = customUrl;
+          } else if (
+            customUrl &&
+            typeof customUrl === 'object' &&
+            Array.isArray(customUrl.urls) &&
+            typeof customUrl.urls[0] === 'string'
+          ) {
+            initialUrl = customUrl.urls[0];
+          } else if (
+            Array.isArray(customUrl) &&
+            typeof customUrl[0] === 'string'
+          ) {
+            initialUrl = customUrl[0];
+          } else if (looksLikeCommaJoinedUrlList(customUrl)) {
+            initialUrl = splitCommaJoinedUrlList(customUrl)[0] || '';
+          }
+          if (typeof initialUrl === 'string' && initialUrl) {
+            tempImg.src = initialUrl;
+          }
           showEnlargedImage(tempImg, event.clientX, event.clientY, customUrl);
         }
       }
