@@ -11,7 +11,9 @@ A Chromium Manifest V3 extension that displays larger images when hovering over 
 - ⌨️ **Shortcuts + Locked Zoom**: Assign keyboard/mouse shortcuts to toggle locked zoom, zoom in/out; press Escape to hide
 - 📱 **Responsive**: Works on any screen size
 - 🎨 **Custom Rules**: Define rules to find higher-quality images for specific elements (e.g., YouTube thumbnails)
+- 🧭 **Target Page Extractors**: No‑code rules that follow links and extract images from the destination page via CSS selectors
 - 🖼️ **Gallery Support**: Custom rules can return multiple URLs; navigate with arrow keys or on-screen controls
+- 🌐 **Per‑Domain Scoping**: Allow or exclude domains (with wildcards) for both custom and built‑in rules
 - ☁️ **Cloud Sync**: Manually save and load settings to/from Google Drive
 
 ## How It Works
@@ -22,6 +24,7 @@ A Chromium Manifest V3 extension that displays larger images when hovering over 
 4. **Positioning**: The overlay intelligently positions itself to stay within the viewport
 5. **Zoom**: Toggle locked zoom mode via shortcut; pan with drag and zoom using shortcuts or mouse wheel
 6. **Hide**: Moving away, scrolling, clicking, or pressing Escape hides the overlay
+7. **Custom Rules**: When an element matches a custom rule: first try Target Page extraction (if configured), otherwise run the rule's Custom JavaScript
 
 ## Installation
 
@@ -121,9 +124,9 @@ const SCALE_THRESHOLD = 1.2; // Minimum scale factor (20% smaller) to trigger
 - **Size Threshold**: Adjust the ratio checks in `isImageScaledDown()`
 - **Styling**: Modify `styles.css` or the inline styles in `content.js`
 - **Positioning**: Adjust the logic in `positionOverlay()`
-- **Built-in Rules**: Add/toggle rules in `settings.js` and gate behavior in `content.js` via `isRuleEnabled(id)`
+- **Built-in Rules**: Add/toggle rules in `settings.js` and gate behavior in `content.js` via `isRuleEnabled(id)`; edit per‑rule Allowed/Excluded domains in Options
 - **Shortcuts**: Configure in Options → Shortcuts; content reads and applies bindings live
-- **Custom Rules**: Use user scripts that call `returnURL(url)` or `returnElement(el)`; see CUSTOM_RULES.md
+- **Custom Rules**: Either configure a Target Page URL Template and Selectors (no code) or use user scripts that call `returnURL(url)` or `returnElement(el)`; see CUSTOM_RULES.md
 
 ## Settings & Options Page
 
@@ -137,13 +140,18 @@ Current settings:
 - **Prefetch Larger Image** – placeholder for future high‑res preloading
 - **Enable Animations** – toggle transitions for overlay
 - **Shortcuts** – assign up to two keyboard/mouse shortcuts per action (locked zoom toggle, zoom in/out)
-- **Built-in Rules** – enable/disable detection behaviors and site-specific CSS fixes; edit per‑rule allowed/excluded domains
-- **Custom Rules** – define JavaScript rules that return a URL or element; includes rule tester
+- **Built-in Rules** – enable/disable detection behaviors and site-specific CSS fixes; edit per‑rule Allowed/Excluded domains
+- **Custom Rules** – either no‑code Target Page extractors (URL Template + Selectors + Max URLs) or JavaScript rules; includes rule tester
 - **Cloud Sync** – manual save/load of settings to Google Drive appData
 
 ### Custom Rules
 
-Custom rules allow you to extract higher-quality images from elements that don't have proper image tags or have low-quality images. Rules provide a `userScript` that runs in a sandboxed page context and must call `returnURL(url)` or `returnElement(el)`. Rules can also return an array of URLs to enable gallery navigation.
+Custom rules allow you to extract higher-quality images from elements that don't have proper image tags or have low-quality images. You can:
+
+- Configure a Target Page extractor (follow `{href}` and select images with CSS like `img | srcsetBest`), or
+- Provide a `userScript` that runs in a sandboxed page context and calls `returnURL(url)` or `returnElement(el)`.
+
+Rules can return an array of URLs to enable gallery navigation.
 
 Each rule consists of:
 
@@ -179,6 +187,7 @@ Implementation notes:
 - All settings are stored locally in `chrome.storage.local` under a single key (`__settings_v1`).
 - The module `settings.js` provides a small API: `loadSettings()`, `updateSettings(patch)`, `getSetting(key)`, and `subscribe(cb)`.
 - `content.js` reads settings from `chrome.storage.local` and applies updates via `chrome.storage.onChanged`.
+- Target Page extraction fetches HTML through the background service worker and parses it safely; results are cached briefly.
 - Custom rules execute via background `userScripts` bridge; results are signaled back with DOM CustomEvents.
 - Cloud sync uses Google Drive appData via OAuth flow.
 

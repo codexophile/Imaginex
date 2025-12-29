@@ -84,6 +84,33 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     })();
     return true; // async
   }
+
+  // Fetch arbitrary HTML with credentials (uses host_permissions)
+  if (msg.type === 'imagus:fetchHtml') {
+    (async () => {
+      try {
+        const url = String(msg.url || '');
+        if (!url) {
+          sendResponse({ ok: false, error: 'Missing URL' });
+          return;
+        }
+        const res = await fetch(url, { credentials: 'include' });
+        if (!res.ok) {
+          sendResponse({
+            ok: false,
+            status: res.status,
+            statusText: res.statusText,
+          });
+          return;
+        }
+        const html = await res.text();
+        sendResponse({ ok: true, html });
+      } catch (e) {
+        sendResponse({ ok: false, error: e?.message || String(e) });
+      }
+    })();
+    return true; // async
+  }
 });
 
 // Optional: Add context menu or browser action functionality in the future

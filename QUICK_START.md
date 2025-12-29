@@ -2,7 +2,7 @@
 
 ## What Are Custom Rules?
 
-Custom rules help the extension find high‑quality images it can’t automatically detect. You provide a CSS selector and a small JavaScript snippet that returns a URL or element.
+Custom rules help the extension find high‑quality images it can’t automatically detect. You can do this with no code (Target Page extraction) or with a small JavaScript snippet.
 
 ## Create Your First Rule
 
@@ -14,11 +14,22 @@ Custom rules help the extension find high‑quality images it can’t automatica
 
 ### 2) Click “Add New Rule”
 
-Fill in:
+Fill in the basics:
 
-- **Rule Name**: e.g., “YouTube Thumbnails”.
-- **CSS Selector**: e.g., `a#thumbnail img[src*="ytimg.com"]`.
-- **Custom JavaScript**: must call `returnURL(url)` or `returnElement(el)`.
+- **Rule Name**
+- **CSS Selector**: which elements to match on the current page
+
+Then choose one approach:
+
+Option A — Target Page (no code):
+
+- **Target Page URL Template**: usually `{href}` to follow the link
+- **Target Page Selectors**: lines like `.article img | srcsetBest` or `img@src`
+- **Max URLs**: 1 for single image, higher for galleries
+
+Option B — Custom JavaScript:
+
+- Provide a snippet that ultimately calls `returnURL(urlOrArray)` or `returnElement(el)`
 
 Example userScript:
 
@@ -36,7 +47,7 @@ Example userScript:
 
 ### 3) Save the Rule
 
-Click “Save Rule”. Use domain filters if it’s site‑specific.
+Click “Save Rule”. Use domain filters if it’s site‑specific (e.g., add `*.example.com` to Allowed Domains). `Excluded` overrides `Allowed`.
 
 ### 4) Test It
 
@@ -46,16 +57,22 @@ Click “Save Rule”. Use domain filters if it’s site‑specific.
 
 ## Built‑in Helpers
 
-- `returnURL(url)`: Provide an image URL (or array of URLs for galleries).
-- `returnElement(el)`: Provide an img/picture/source; the extension picks the best `srcset`.
-- `ctx.src`, `ctx.href`: Useful inputs from the matched element.
-- `trigger`: Direct reference to the matched DOM element.
+- Target Page:
+  - URL Template placeholders: `{href}`, `{src}`
+  - Selector syntax: `css`, `css@attr`, `css | srcsetBest`
+  - Absolute URL resolution and short‑term caching
+- Custom JS:
+  - `returnURL(urlOrArray)`: Provide a URL or an array (gallery)
+  - `returnElement(el)`: Provide an img/picture/source; the extension picks the best `srcset`
+  - `ctx.src`, `ctx.href`: Useful inputs from the matched element
+  - `trigger`: Direct reference to the matched DOM element
 
 ## Troubleshooting
 
 - Verify your selector matches (`document.querySelectorAll(...)`).
-- Check console logs (“Custom rule matched…”; errors appear as `imagus:userScriptError`).
-- Ensure you call `returnURL(...)` or `returnElement(...)` and guard for missing data.
+- For Target Page, start simple: `{href}` and `img | srcsetBest`.
+- Check console logs. Target Page issues appear as fetch/parse errors; user scripts as `imagus:userScriptError`.
+- Ensure you call `returnURL(...)` or `returnElement(...)` and guard for missing data if using Custom JS.
 - Confirm the rule is enabled in Options.
 
 ## Tips

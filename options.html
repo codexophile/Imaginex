@@ -707,6 +707,33 @@ if (videoId) returnURL('https://i.ytimg.com/vi/' + videoId[1] + '/maxres.jpg');<
                 </div>
               </div>
 
+              <div class="form-group">
+                <label for="ruleTargetUrlTemplate">Target Page URL (Optional)</label>
+                <input type="text" id="ruleTargetUrlTemplate" placeholder="e.g., {href} or https://site.com/p/{id}" />
+                <div class="help-text">
+                  Fetch the linked page and extract image URLs there. Use placeholders like <code>{href}</code> or
+                  <code>{src}</code>. If empty, defaults to <code>{href}</code>.
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="ruleTargetSelectors">Target Page Selectors (one per line)</label>
+                <textarea id="ruleTargetSelectors" spellcheck="false"
+                  placeholder="img | srcsetBest&#10;figure img@src&#10;a.gallery-item@href"></textarea>
+                <div class="help-text">
+                  CSS selectors evaluated on the target page. Suffix with <code>@attr</code> to read a specific
+                  attribute
+                  (e.g., <code>img@src</code>). Add <code>| srcsetBest</code> to pick the highest-resolution source from
+                  <code>srcset</code>.
+                </div>
+              </div>
+
+              <div class="form-group inline">
+                <label for="ruleTargetMaxResults">Max URLs</label>
+                <input type="number" id="ruleTargetMaxResults" min="1" value="1" style="width:90px;" />
+                <span class="desc">Collect multiple URLs for gallery mode</span>
+              </div>
+
 
 
               <div class="form-group">

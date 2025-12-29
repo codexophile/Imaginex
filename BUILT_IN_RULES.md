@@ -4,6 +4,8 @@
 
 The extension now has a comprehensive built-in rules system that makes all hardcoded patterns and behaviors toggleable and maintainable. Each rule can be enabled/disabled individually from the options page, and triggering is logged to the console for debugging.
 
+Built‑in rules also support per‑domain scoping so they only apply where relevant.
+
 ## Rule Categories
 
 ### Element Detection Patterns
@@ -110,6 +112,8 @@ builtInRules: [
     enabled: true,
     category: 'detection',
     description: 'Detects overlay elements...',
+    allowDomains: ['*.example.com'],
+    excludeDomains: ['ads.example.com'],
   },
   // ... more rules
 ];
@@ -121,6 +125,7 @@ builtInRules: [
 2. **Checking**: Before applying any pattern, code calls `isRuleEnabled(ruleId)`
 3. **Logging**: When a rule triggers, it logs to console with format: `[Built-in Rule: Name] Details...`
 4. **CSS Application**: CSS fixes are dynamically generated based on enabled rules
+5. **Domain Filters**: `isRuleEnabled` also considers `allowDomains`/`excludeDomains` for the current hostname
 
 ### Options Page UI
 
@@ -134,6 +139,13 @@ Each rule shows:
 - Checkbox to enable/disable
 - Name and description
 - Real-time updates when toggled
+- Allowed/Excluded Domains editor (supports wildcards like `*.example.com`)
+
+#### Domain Filters
+
+- **Allowed Domains**: If set, the rule only runs on matching hostnames.
+- **Excluded Domains**: Rules never run on matching hostnames. Exclusions override Allowed.
+- **Wildcards**: `*.example.com` matches `sub.example.com` and deeper; plain `example.com` matches that hostname and subdomains by suffix.
 
 ## Debugging
 
@@ -155,6 +167,7 @@ If a rule causes issues on a specific site:
 2. Navigate to "Built-in Rules"
 3. Uncheck the problematic rule
 4. Reload the affected page
+5. Alternatively, add the site to Excluded Domains instead of disabling the rule globally
 
 ### Adding New Rules
 
@@ -169,6 +182,8 @@ To add a new built-in rule:
      enabled: true,
      category: 'detection', // or 'css-fixes'
      description: 'What this rule does',
+     allowDomains: [], // optional
+     excludeDomains: [] // optional
    }
    ```
 

@@ -351,6 +351,9 @@ async function init() {
   els.ruleName = $('ruleName');
   els.ruleSelector = $('ruleSelector');
   els.ruleUserScript = $('ruleUserScript');
+  els.ruleTargetUrlTemplate = $('ruleTargetUrlTemplate');
+  els.ruleTargetSelectors = $('ruleTargetSelectors');
+  els.ruleTargetMaxResults = $('ruleTargetMaxResults');
   els.ruleAllowDomains = $('ruleAllowDomains');
   els.ruleExcludeDomains = $('ruleExcludeDomains');
   els.saveRuleBtn = $('saveRuleBtn');
@@ -915,6 +918,20 @@ function renderCustomRules(rules) {
           )}`
         );
       }
+      // Target Page summary
+      const tp = rule.targetPage || {};
+      const hasTpSelectors = Array.isArray(tp.selectors)
+        ? tp.selectors.length > 0
+        : String(tp.selectors || '').trim().length > 0;
+      const tpSummary = hasTpSelectors
+        ? `<div><strong>Target Page:</strong> URL=${escapeHtml(
+            tp.urlTemplate || '{href}'
+          )}, Selectors=${escapeHtml(
+            Array.isArray(tp.selectors)
+              ? String(tp.selectors.length) + ' line(s)'
+              : tp.selectors || ''
+          )}, Max=${escapeHtml(String(tp.maxResults || 1))}</div>`
+        : '';
       return `
     <div class="rule-item" data-rule-id="${rule.id}">
       <div class="rule-header">
@@ -938,6 +955,7 @@ function renderCustomRules(rules) {
         <div><strong>Selector:</strong> <code>${escapeHtml(
           rule.selector
         )}</code></div>
+        ${tpSummary}
         ${
           rule.userScript
             ? `<div><strong>Script:</strong> ${escapeHtml(
@@ -982,6 +1000,9 @@ function handleAddRule() {
   els.ruleName.value = '';
   els.ruleSelector.value = '';
   els.ruleUserScript.value = '';
+  if (els.ruleTargetUrlTemplate) els.ruleTargetUrlTemplate.value = '';
+  if (els.ruleTargetSelectors) els.ruleTargetSelectors.value = '';
+  if (els.ruleTargetMaxResults) els.ruleTargetMaxResults.value = '50';
   els.ruleAllowDomains.value = '';
   els.ruleExcludeDomains.value = '';
   els.ruleForm.style.display = 'block';
@@ -1000,6 +1021,16 @@ function handleEditRule(e) {
   els.ruleSelector.value = rule.selector;
   els.ruleUserScript.value =
     typeof rule.userScript === 'string' ? rule.userScript : '';
+  // Target page fields
+  const tp = rule.targetPage || {};
+  if (els.ruleTargetUrlTemplate)
+    els.ruleTargetUrlTemplate.value = tp.urlTemplate || '';
+  if (els.ruleTargetSelectors)
+    els.ruleTargetSelectors.value = Array.isArray(tp.selectors)
+      ? tp.selectors.join('\n')
+      : tp.selectors || '';
+  if (els.ruleTargetMaxResults)
+    els.ruleTargetMaxResults.value = String(tp.maxResults || 50);
   // Populate domain fields
   els.ruleAllowDomains.value = Array.isArray(rule.allowDomains)
     ? rule.allowDomains.join(', ')
@@ -1015,6 +1046,19 @@ async function handleSaveRule() {
   const name = els.ruleName.value.trim();
   const selector = els.ruleSelector.value.trim();
   const userScript = (els.ruleUserScript.value || '').trim();
+  // Target page fields
+  const targetUrlTemplate = (els.ruleTargetUrlTemplate?.value || '').trim();
+  const targetSelectorsRaw = (els.ruleTargetSelectors?.value || '').trim();
+  const targetSelectors = targetSelectorsRaw
+    ? targetSelectorsRaw
+        .split(/\r?\n/)
+        .map(s => s.trim())
+        .filter(Boolean)
+    : [];
+  const targetMaxResults = Math.max(
+    1,
+    Number(els.ruleTargetMaxResults?.value || '50') || 50
+  );
 
   // Parse domain fields
   const parseDomainsInput = input => {
@@ -1032,9 +1076,9 @@ async function handleSaveRule() {
     return false;
   }
 
-  if (!userScript) {
+  if (!userScript && targetSelectors.length === 0) {
     alert(
-      'Custom JavaScript is required. Use returnURL(url) or returnElement(el).'
+      'Provide either Target Page Selectors (to auto-extract) or Custom JavaScript.'
     );
     return false;
   }
@@ -1050,6 +1094,14 @@ async function handleSaveRule() {
         name,
         selector,
         userScript: userScript || undefined,
+        targetPage:
+          targetSelectors.length || targetUrlTemplate
+            ? {
+                urlTemplate: targetUrlTemplate || '{href}',
+                selectors: targetSelectors,
+                maxResults: targetMaxResults,
+              }
+            : undefined,
         allowDomains: allowDomains.length > 0 ? allowDomains : [],
         excludeDomains: excludeDomains.length > 0 ? excludeDomains : [],
       };
@@ -1066,6 +1118,14 @@ async function handleSaveRule() {
       enabled: true,
       selector,
       userScript: userScript || undefined,
+      targetPage:
+        targetSelectors.length || targetUrlTemplate
+          ? {
+              urlTemplate: targetUrlTemplate || '{href}',
+              selectors: targetSelectors,
+              maxResults: targetMaxResults,
+            }
+          : undefined,
       allowDomains: allowDomains.length > 0 ? allowDomains : [],
       excludeDomains: excludeDomains.length > 0 ? excludeDomains : [],
     };

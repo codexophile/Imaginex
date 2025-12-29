@@ -1033,6 +1033,151 @@
 
   // Legacy template application removed.
 
+  // Simple template interpolation for target page URL
+  function applyTemplate(tpl, ctxVars) {
+    if (!tpl) return '';
+    return String(tpl).replace(/\{([^{}]+)\}/g, (_, key) => {
+      const k = String(key).trim();
+      const parts = k.split('.');
+      let v = ctxVars;
+      for (const p of parts) {
+        if (v && Object.prototype.hasOwnProperty.call(v, p)) v = v[p];
+        else return '';
+      }
+      return v == null ? '' : String(v);
+    });
+  }
+
+  // Resolve possibly relative URL against base
+  function absolutize(url, base) {
+    try {
+      return new URL(url, base).href;
+    } catch (_) {
+      return url || '';
+    }
+  }
+
+  const targetPageCache = new Map(); // href -> { ts, urls }
+
+  async function fetchTargetHtml(url) {
+    return new Promise(resolve => {
+      chrome.runtime.sendMessage({ type: 'imagus:fetchHtml', url }, res => {
+        if (res && res.ok && typeof res.html === 'string') resolve(res.html);
+        else resolve('');
+      });
+    });
+  }
+
+  function parseSelectorLine(line) {
+    // Supports: "selector", "selector@attr", "selector | srcsetBest"
+    const out = { selector: '', attr: '', mode: '' };
+    let s = String(line || '').trim();
+    if (!s) return out;
+    const pipeIdx = s.lastIndexOf('|');
+    if (pipeIdx !== -1) {
+      const rhs = s.slice(pipeIdx + 1).trim();
+      s = s.slice(0, pipeIdx).trim();
+      if (/^srcsetBest$/i.test(rhs)) out.mode = 'srcsetBest';
+    }
+    const atIdx = s.lastIndexOf('@');
+    if (atIdx !== -1) {
+      out.selector = s.slice(0, atIdx).trim();
+      out.attr = s.slice(atIdx + 1).trim();
+    } else {
+      out.selector = s;
+    }
+    return out;
+  }
+
+  function extractUrlFromMatch(el, baseUrl, spec) {
+    try {
+      if (spec.mode === 'srcsetBest') {
+        const u = bestSrcFromElement(el);
+        return u ? absolutize(u, baseUrl) : '';
+      }
+      if (spec.attr) {
+        const val = el.getAttribute(spec.attr) || '';
+        return val ? absolutize(val, baseUrl) : '';
+      }
+      const u = bestSrcFromElement(el) || '';
+      return u ? absolutize(u, baseUrl) : '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  async function extractFromTargetPage(element, rule) {
+    const triggerHref =
+      element.href ||
+      element.getAttribute?.('href') ||
+      closestDeep(element, 'a')?.href ||
+      '';
+    const triggerSrc =
+      element.currentSrc || element.src || element.getAttribute?.('src') || '';
+    const ctx = {
+      href: triggerHref,
+      src: triggerSrc,
+      variables: {},
+    };
+
+    const target = rule.targetPage || {};
+    const urlTpl = target.urlTemplate || '{href}';
+    const targetUrlRaw = applyTemplate(urlTpl, { ...ctx, ...ctx.variables });
+    const targetUrl = targetUrlRaw || triggerHref || '';
+    if (!/^https?:\/\//i.test(targetUrl)) return null;
+
+    // Cache by URL
+    const cached = targetPageCache.get(targetUrl);
+    const now = Date.now();
+    if (cached && now - cached.ts < 60 * 1000) {
+      return { urls: cached.urls.slice(0), currentIndex: 0 };
+    }
+
+    const html = await fetchTargetHtml(targetUrl);
+    if (!html) return null;
+    let doc = null;
+    try {
+      doc = new DOMParser().parseFromString(html, 'text/html');
+    } catch (_) {
+      return null;
+    }
+
+    const selectors = Array.isArray(target.selectors)
+      ? target.selectors
+      : String(target.selectors || '')
+          .split(/\r?\n/)
+          .map(s => s.trim())
+          .filter(Boolean);
+    if (selectors.length === 0) return null;
+
+    const maxResults = Number(target.maxResults || 1) || 1;
+    const out = [];
+    const seen = new Set();
+    for (const line of selectors) {
+      const spec = parseSelectorLine(line);
+      if (!spec.selector) continue;
+      let nodeList = [];
+      try {
+        nodeList = Array.from(doc.querySelectorAll(spec.selector));
+      } catch (_) {
+        continue;
+      }
+      for (const el of nodeList) {
+        const u = extractUrlFromMatch(el, targetUrl, spec);
+        if (u && !seen.has(u)) {
+          seen.add(u);
+          out.push(u);
+          if (out.length >= maxResults) break;
+        }
+      }
+      if (out.length >= maxResults) break;
+    }
+
+    if (out.length === 0) return null;
+    targetPageCache.set(targetUrl, { ts: now, urls: out.slice(0) });
+    return out.length === 1 ? out[0] : { urls: out, currentIndex: 0 };
+  }
+
   async function checkCustomRules(element) {
     if (!customRules || customRules.length === 0) {
       return null;
@@ -1053,6 +1198,20 @@
         if (!matched) continue;
 
         console.log('Element matches custom rule:', rule.name, element);
+
+        // Target page extraction (no custom JS needed)
+        if (rule.targetPage && (rule.targetPage.selectors || []).length !== 0) {
+          try {
+            const result = await extractFromTargetPage(element, rule);
+            if (result) return result;
+          } catch (e) {
+            console.warn(
+              'Target-page extraction failed for rule',
+              rule.name,
+              e
+            );
+          }
+        }
 
         // Optional: execute Custom JavaScript regardless of API presence
         if (
