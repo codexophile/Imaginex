@@ -1995,6 +1995,10 @@
           // Clicks inside overlay should not hide or exit
           return;
         }
+        // Don't hide if clicking on the overlay (including gallery controls)
+        if (hoverOverlay && hoverOverlay.contains(event.target)) {
+          return;
+        }
         hideEnlargedImage();
       },
       true
