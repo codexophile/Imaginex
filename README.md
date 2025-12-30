@@ -14,7 +14,7 @@ A Chromium Manifest V3 extension that displays larger images when hovering over 
 - 🧭 **Target Page Extractors**: No‑code rules that follow links and extract images from the destination page via CSS selectors
 - 🖼️ **Gallery Support**: Custom rules can return multiple URLs; navigate with arrow keys or on-screen controls
 - 🌐 **Per‑Domain Scoping**: Allow or exclude domains (with wildcards) for both custom and built‑in rules
-- ☁️ **Cloud Sync**: Manually save and load settings to/from Google Drive
+- ☁️ **Cloud Sync**: One-click sync to Google Drive with timestamp-based conflict resolution to keep the newest changes
 
 ## How It Works
 
@@ -142,7 +142,7 @@ Current settings:
 - **Shortcuts** – assign up to two keyboard/mouse shortcuts per action (locked zoom toggle, zoom in/out)
 - **Built-in Rules** – enable/disable detection behaviors and site-specific CSS fixes; edit per‑rule Allowed/Excluded domains
 - **Custom Rules** – either no‑code Target Page extractors (URL Template + Selectors + Max URLs) or JavaScript rules; includes rule tester
-- **Cloud Sync** – manual save/load of settings to Google Drive appData
+- **Cloud Sync** – one-button sync to Google Drive appData with timestamp-based conflict resolution (newest edit wins)
 
 ### Custom Rules
 

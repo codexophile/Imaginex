@@ -334,8 +334,7 @@ async function init() {
   els.saveBtn = $('saveBtn');
   els.resetBtn = $('resetBtn');
   els.status = $('status');
-  els.cloudSaveBtn = $('cloudSaveBtn');
-  els.cloudLoadBtn = $('cloudLoadBtn');
+  els.cloudSyncBtn = $('cloudSyncBtn');
   els.cloudStatus = $('cloudStatus');
 
   // API Keys elements
@@ -381,13 +380,12 @@ async function init() {
   const configured =
     typeof isCloudConfigured === 'function' && isCloudConfigured();
   if (!configured) {
-    if (els.cloudSaveBtn) els.cloudSaveBtn.disabled = true;
-    if (els.cloudLoadBtn) els.cloudLoadBtn.disabled = true;
+    if (els.cloudSyncBtn) els.cloudSyncBtn.disabled = true;
     if (els.cloudStatus)
       els.cloudStatus.textContent =
         'Cloud sync not configured (set oauth2.client_id).';
   }
-  // OAuth flow will only trigger when user clicks Save/Load buttons
+  // OAuth flow will only trigger when user clicks Sync button
 }
 
 function bindValues(s) {
@@ -468,15 +466,29 @@ function wireEvents() {
     els.addApiKeyBtn.addEventListener('click', handleAddApiKey);
   }
 
-  if (els.cloudSaveBtn) {
-    els.cloudSaveBtn.addEventListener('click', async () => {
-      if (els.cloudSaveBtn.disabled) return;
-      els.cloudStatus.textContent = 'Saving to cloud...';
+  if (els.cloudSyncBtn) {
+    els.cloudSyncBtn.addEventListener('click', async () => {
+      if (els.cloudSyncBtn.disabled) return;
+      els.cloudStatus.textContent = 'Syncing...';
       try {
         await signIn(true);
-        const settings = await loadSettings();
-        await saveSettingsToCloud(settings);
-        els.cloudStatus.textContent = 'Saved to cloud.';
+
+        // Load and merge from cloud
+        const cloudSettings = await loadSettingsFromCloud();
+        const merged = await mergeCloudSettings(cloudSettings);
+
+        // Save merged result back to cloud
+        await saveSettingsToCloud(merged);
+
+        // Update UI
+        initial = merged;
+        bindValues(initial);
+        renderCustomRules(initial.customRules || []);
+        renderApiKeys(initial.apiKeys || {});
+        renderBuiltInRules(initial.builtInRules || []);
+        renderShortcuts(initial.shortcuts || {});
+
+        els.cloudStatus.textContent = 'Synced.';
       } catch (e) {
         const dbg =
           typeof getOAuthDebugInfo === 'function' ? getOAuthDebugInfo() : null;
@@ -484,36 +496,12 @@ function wireEvents() {
           ? ` (client: ${dbg.clientId}, redirect: ${dbg.redirectUri})`
           : '';
         els.cloudStatus.textContent =
-          'Cloud save failed: ' + (e?.message || e) + extra;
-        console.error('[Imaginex] Cloud save failed', { error: e, debug: dbg });
+          'Sync failed: ' + (e?.message || e) + extra;
+        console.error('[Imaginex] Cloud sync failed', { error: e, debug: dbg });
       }
       setTimeout(() => {
         els.cloudStatus.textContent = '';
-      }, 2000);
-    });
-  }
-  if (els.cloudLoadBtn) {
-    els.cloudLoadBtn.addEventListener('click', async () => {
-      if (els.cloudLoadBtn.disabled) return;
-      els.cloudStatus.textContent = 'Loading from cloud...';
-      try {
-        await signIn(true);
-        const cloudSettings = await loadSettingsFromCloud();
-        // Merge cloud into local instead of replacing
-        const merged = await mergeCloudSettings(cloudSettings);
-        initial = merged;
-        bindValues(initial);
-        renderCustomRules(initial.customRules || []);
-        renderApiKeys(initial.apiKeys || {});
-        renderBuiltInRules(initial.builtInRules || []);
-        renderShortcuts(initial.shortcuts || {});
-        els.cloudStatus.textContent = 'Merged from cloud.';
-      } catch (e) {
-        els.cloudStatus.textContent = 'Cloud load failed: ' + (e?.message || e);
-      }
-      setTimeout(() => {
-        els.cloudStatus.textContent = '';
-      }, 2000);
+      }, 2500);
     });
   }
 

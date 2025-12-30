@@ -153,6 +153,14 @@ const SETTINGS_DEFAULTS = Object.freeze({
   ],
 });
 
+const META_DEFAULTS = Object.freeze({
+  fields: {}, // per-field updatedAt
+  apiKeys: {}, // per key name updatedAt
+  customRules: {}, // per rule id updatedAt
+  builtInRules: {}, // per rule id updatedAt
+  shortcuts: 0, // timestamp for shortcuts object
+});
+
 const INTERNAL_KEY = '__settings_v1';
 let inMemory = null;
 let subscribers = new Set();
@@ -162,9 +170,56 @@ function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
+function nowTs() {
+  return Date.now();
+}
+
+function pickNewer({ localValue, cloudValue, localTs, cloudTs }) {
+  if (cloudTs && (!localTs || cloudTs > localTs)) return cloudValue;
+  if (localTs && (!cloudTs || localTs > cloudTs)) return localValue;
+  if (typeof localValue === 'undefined' && typeof cloudValue !== 'undefined')
+    return cloudValue;
+  return localValue;
+}
+
+function mergeKeyed({ localMap, cloudMap, localMeta = {}, cloudMeta = {}, valuePicker }) {
+  const result = { ...(localMap || {}) };
+  const meta = { ...(localMeta || {}) };
+  const keys = new Set([
+    ...Object.keys(localMap || {}),
+    ...Object.keys(cloudMap || {}),
+  ]);
+  keys.forEach(key => {
+    const localValue = localMap?.[key];
+    const cloudValue = cloudMap?.[key];
+    const localTs = localMeta?.[key];
+    const cloudTs = cloudMeta?.[key];
+    const picked = valuePicker({ localValue, cloudValue, localTs, cloudTs, key });
+    if (typeof picked === 'undefined') {
+      delete result[key];
+      delete meta[key];
+      return;
+    }
+    result[key] = picked;
+    if (cloudTs && (!localTs || cloudTs > localTs)) {
+      meta[key] = cloudTs;
+    } else if (localTs) {
+      meta[key] = localTs;
+    } else {
+      meta[key] = nowTs();
+    }
+  });
+  return { result, meta };
+}
+
 function ensureDefaults(data) {
-  if (!data || typeof data !== 'object') return deepClone(SETTINGS_DEFAULTS);
+  if (!data || typeof data !== 'object') {
+    const defaults = deepClone(SETTINGS_DEFAULTS);
+    defaults.meta = deepClone(META_DEFAULTS);
+    return defaults;
+  }
   const merged = { ...SETTINGS_DEFAULTS, ...data };
+  merged.meta = deepClone({ ...META_DEFAULTS, ...(data.meta || {}) });
   // Preserve schemaVersion from defaults if missing
   if (!merged.schemaVersion)
     merged.schemaVersion = SETTINGS_DEFAULTS.schemaVersion;
@@ -226,11 +281,110 @@ export async function getSetting(key) {
 
 export async function updateSettings(patch) {
   await loadInternal();
+  inMemory.meta = inMemory.meta || deepClone(META_DEFAULTS);
+  const meta = inMemory.meta;
+  meta.fields = meta.fields || {};
+  meta.apiKeys = meta.apiKeys || {};
+  meta.customRules = meta.customRules || {};
+  meta.builtInRules = meta.builtInRules || {};
   let changed = false;
+  const fieldKeys = new Set([
+    'theme',
+    'zoom',
+    'enablePrefetch',
+    'enableAnimations',
+    'hoverDelay',
+    'schemaVersion',
+  ]);
   for (const [k, v] of Object.entries(patch)) {
-    if (inMemory[k] !== v) {
-      inMemory[k] = v;
-      changed = true;
+    if (fieldKeys.has(k)) {
+      if (inMemory[k] !== v) {
+        inMemory[k] = v;
+        meta.fields[k] = nowTs();
+        changed = true;
+      }
+      continue;
+    }
+
+    if (k === 'apiKeys' && v && typeof v === 'object') {
+      const prev = inMemory.apiKeys || {};
+      const next = { ...v };
+      const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+      let localChange = false;
+      keys.forEach(key => {
+        if (prev[key] !== next[key]) {
+          meta.apiKeys[key] = nowTs();
+          localChange = true;
+        }
+        if (!next.hasOwnProperty(key)) {
+          delete meta.apiKeys[key];
+        }
+      });
+      if (localChange) {
+        inMemory.apiKeys = next;
+        changed = true;
+      }
+      continue;
+    }
+
+    if (k === 'customRules' && Array.isArray(v)) {
+      const prevMap = new Map((inMemory.customRules || []).map(r => [r.id, r]));
+      const nextMap = new Map(v.map(r => [r.id, r]));
+      let localChange = false;
+      // Detect additions/updates
+      for (const [id, rule] of nextMap.entries()) {
+        const prevRule = prevMap.get(id);
+        if (!prevRule || JSON.stringify(prevRule) !== JSON.stringify(rule)) {
+          meta.customRules[id] = nowTs();
+          localChange = true;
+        }
+      }
+      // Detect removals
+      for (const id of prevMap.keys()) {
+        if (!nextMap.has(id)) {
+          delete meta.customRules[id];
+          localChange = true;
+        }
+      }
+      if (localChange) {
+        inMemory.customRules = v;
+        changed = true;
+      }
+      continue;
+    }
+
+    if (k === 'builtInRules' && Array.isArray(v)) {
+      const prevMap = new Map((inMemory.builtInRules || []).map(r => [r.id, r]));
+      const nextMap = new Map(v.map(r => [r.id, r]));
+      let localChange = false;
+      for (const [id, rule] of nextMap.entries()) {
+        const prevRule = prevMap.get(id);
+        if (!prevRule || JSON.stringify(prevRule) !== JSON.stringify(rule)) {
+          meta.builtInRules[id] = nowTs();
+          localChange = true;
+        }
+      }
+      for (const id of prevMap.keys()) {
+        if (!nextMap.has(id)) {
+          delete meta.builtInRules[id];
+          localChange = true;
+        }
+      }
+      if (localChange) {
+        inMemory.builtInRules = v;
+        changed = true;
+      }
+      continue;
+    }
+
+    if (k === 'shortcuts' && v && typeof v === 'object') {
+      const normalized = mergeShortcuts(v);
+      if (JSON.stringify(inMemory.shortcuts) !== JSON.stringify(normalized)) {
+        inMemory.shortcuts = normalized;
+        meta.shortcuts = nowTs();
+        changed = true;
+      }
+      continue;
     }
   }
   if (changed) {
@@ -262,56 +416,94 @@ export async function mergeCloudSettings(cloudSettings) {
   await loadInternal();
   const local = deepClone(inMemory);
   const cloud = cloudSettings || {};
+  const localMeta = local.meta || deepClone(META_DEFAULTS);
+  const cloudMeta = cloud.meta || deepClone(META_DEFAULTS);
+  const mergedMeta = deepClone(META_DEFAULTS);
 
-  // Merge primitive values and simple objects
-  for (const key of [
+  // Merge primitive fields with last-write-wins
+  const fieldKeys = [
     'theme',
     'zoom',
     'enablePrefetch',
     'enableAnimations',
     'hoverDelay',
     'schemaVersion',
-  ]) {
-    if (cloud.hasOwnProperty(key)) {
-      local[key] = cloud[key];
-    }
-  }
-
-  // Merge API keys (object merge)
-  if (cloud.apiKeys && typeof cloud.apiKeys === 'object') {
-    local.apiKeys = { ...(local.apiKeys || {}), ...cloud.apiKeys };
-  }
-
-  // Merge shortcuts (object merge)
-  if (cloud.shortcuts && typeof cloud.shortcuts === 'object') {
-    local.shortcuts = mergeShortcuts({
-      ...(local.shortcuts || {}),
-      ...cloud.shortcuts,
+  ];
+  mergedMeta.fields = {};
+  fieldKeys.forEach(key => {
+    const chosen = pickNewer({
+      localValue: local[key],
+      cloudValue: cloud[key],
+      localTs: localMeta.fields?.[key],
+      cloudTs: cloudMeta.fields?.[key],
     });
-  }
+    local[key] = chosen;
+    mergedMeta.fields[key] =
+      chosen === cloud[key]
+        ? cloudMeta.fields?.[key] || nowTs()
+        : localMeta.fields?.[key] || nowTs();
+  });
 
-  // Merge customRules by ID (array merge)
-  if (Array.isArray(cloud.customRules)) {
-    const localRules = Array.isArray(local.customRules)
-      ? local.customRules
-      : [];
-    const localById = new Map(localRules.map(r => [r.id, r]));
-    cloud.customRules.forEach(cloudRule => {
-      localById.set(cloudRule.id, cloudRule);
-    });
-    local.customRules = Array.from(localById.values());
-  }
+  // Merge API keys per key with timestamps
+  const { result: mergedApiKeys, meta: mergedApiMeta } = mergeKeyed({
+    localMap: local.apiKeys || {},
+    cloudMap: cloud.apiKeys || {},
+    localMeta: localMeta.apiKeys || {},
+    cloudMeta: cloudMeta.apiKeys || {},
+    valuePicker: pickNewer,
+  });
+  local.apiKeys = mergedApiKeys;
+  mergedMeta.apiKeys = mergedApiMeta;
 
-  // Merge builtInRules by ID (preserve structure, update enabled state)
-  if (Array.isArray(cloud.builtInRules)) {
-    const cloudPrefs = new Map(cloud.builtInRules.map(r => [r.id, r.enabled]));
-    local.builtInRules = (local.builtInRules || []).map(localRule => {
-      if (cloudPrefs.has(localRule.id)) {
-        return { ...localRule, enabled: cloudPrefs.get(localRule.id) };
-      }
-      return localRule;
-    });
-  }
+  // Merge shortcuts by object-level timestamp
+  const chosenShortcuts = pickNewer({
+    localValue: local.shortcuts,
+    cloudValue: cloud.shortcuts,
+    localTs: localMeta.shortcuts,
+    cloudTs: cloudMeta.shortcuts,
+  });
+  local.shortcuts = mergeShortcuts(chosenShortcuts || local.shortcuts);
+  mergedMeta.shortcuts =
+    chosenShortcuts === cloud.shortcuts
+      ? cloudMeta.shortcuts || nowTs()
+      : localMeta.shortcuts || nowTs();
+
+  // Merge customRules per id with timestamps
+  const localCustomMap = Object.fromEntries(
+    (local.customRules || []).map(rule => [rule.id, rule])
+  );
+  const cloudCustomMap = Object.fromEntries(
+    (cloud.customRules || []).map(rule => [rule.id, rule])
+  );
+  const { result: mergedCustomMap, meta: mergedCustomMeta } = mergeKeyed({
+    localMap: localCustomMap,
+    cloudMap: cloudCustomMap,
+    localMeta: localMeta.customRules || {},
+    cloudMeta: cloudMeta.customRules || {},
+    valuePicker: pickNewer,
+  });
+  local.customRules = Object.values(mergedCustomMap);
+  mergedMeta.customRules = mergedCustomMeta;
+
+  // Merge builtInRules per id with timestamps
+  const localBuiltMap = Object.fromEntries(
+    (local.builtInRules || []).map(rule => [rule.id, rule])
+  );
+  const cloudBuiltMap = Object.fromEntries(
+    (cloud.builtInRules || []).map(rule => [rule.id, rule])
+  );
+  const { result: mergedBuiltMap, meta: mergedBuiltMeta } = mergeKeyed({
+    localMap: localBuiltMap,
+    cloudMap: cloudBuiltMap,
+    localMeta: localMeta.builtInRules || {},
+    cloudMeta: cloudMeta.builtInRules || {},
+    valuePicker: pickNewer,
+  });
+  local.builtInRules = Object.values(mergedBuiltMap);
+  mergedMeta.builtInRules = mergedBuiltMeta;
+
+  // Persist merged meta
+  local.meta = mergedMeta;
 
   // Update in-memory and persist
   inMemory = local;

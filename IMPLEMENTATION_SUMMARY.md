@@ -16,6 +16,7 @@ This covers elements without image tags, sites with low‑quality thumbnails but
 - Added `customRules` array to default settings (includes a YouTube example).
 - Persistent storage under `__settings_v1` with merging of defaults and user edits.
 - Built‑in rules catalog with toggle states and per‑rule domain filters (`allowDomains`/`excludeDomains`, wildcards supported).
+- Timestamped metadata per field/rule and last-write-wins merge for cloud sync so newer local edits are preserved.
 
 ### 2. Options Page UI (`options.html`)
 
