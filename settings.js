@@ -182,7 +182,13 @@ function pickNewer({ localValue, cloudValue, localTs, cloudTs }) {
   return localValue;
 }
 
-function mergeKeyed({ localMap, cloudMap, localMeta = {}, cloudMeta = {}, valuePicker }) {
+function mergeKeyed({
+  localMap,
+  cloudMap,
+  localMeta = {},
+  cloudMeta = {},
+  valuePicker,
+}) {
   const result = { ...(localMap || {}) };
   const meta = { ...(localMeta || {}) };
   const keys = new Set([
@@ -194,7 +200,13 @@ function mergeKeyed({ localMap, cloudMap, localMeta = {}, cloudMeta = {}, valueP
     const cloudValue = cloudMap?.[key];
     const localTs = localMeta?.[key];
     const cloudTs = cloudMeta?.[key];
-    const picked = valuePicker({ localValue, cloudValue, localTs, cloudTs, key });
+    const picked = valuePicker({
+      localValue,
+      cloudValue,
+      localTs,
+      cloudTs,
+      key,
+    });
     if (typeof picked === 'undefined') {
       delete result[key];
       delete meta[key];
@@ -354,7 +366,9 @@ export async function updateSettings(patch) {
     }
 
     if (k === 'builtInRules' && Array.isArray(v)) {
-      const prevMap = new Map((inMemory.builtInRules || []).map(r => [r.id, r]));
+      const prevMap = new Map(
+        (inMemory.builtInRules || []).map(r => [r.id, r])
+      );
       const nextMap = new Map(v.map(r => [r.id, r]));
       let localChange = false;
       for (const [id, rule] of nextMap.entries()) {
