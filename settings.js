@@ -257,6 +257,69 @@ function notify() {
   });
 }
 
+// Merge cloud settings into local without full replacement
+export async function mergeCloudSettings(cloudSettings) {
+  await loadInternal();
+  const local = deepClone(inMemory);
+  const cloud = cloudSettings || {};
+
+  // Merge primitive values and simple objects
+  for (const key of [
+    'theme',
+    'zoom',
+    'enablePrefetch',
+    'enableAnimations',
+    'hoverDelay',
+    'schemaVersion',
+  ]) {
+    if (cloud.hasOwnProperty(key)) {
+      local[key] = cloud[key];
+    }
+  }
+
+  // Merge API keys (object merge)
+  if (cloud.apiKeys && typeof cloud.apiKeys === 'object') {
+    local.apiKeys = { ...(local.apiKeys || {}), ...cloud.apiKeys };
+  }
+
+  // Merge shortcuts (object merge)
+  if (cloud.shortcuts && typeof cloud.shortcuts === 'object') {
+    local.shortcuts = mergeShortcuts({
+      ...(local.shortcuts || {}),
+      ...cloud.shortcuts,
+    });
+  }
+
+  // Merge customRules by ID (array merge)
+  if (Array.isArray(cloud.customRules)) {
+    const localRules = Array.isArray(local.customRules)
+      ? local.customRules
+      : [];
+    const localById = new Map(localRules.map(r => [r.id, r]));
+    cloud.customRules.forEach(cloudRule => {
+      localById.set(cloudRule.id, cloudRule);
+    });
+    local.customRules = Array.from(localById.values());
+  }
+
+  // Merge builtInRules by ID (preserve structure, update enabled state)
+  if (Array.isArray(cloud.builtInRules)) {
+    const cloudPrefs = new Map(cloud.builtInRules.map(r => [r.id, r.enabled]));
+    local.builtInRules = (local.builtInRules || []).map(localRule => {
+      if (cloudPrefs.has(localRule.id)) {
+        return { ...localRule, enabled: cloudPrefs.get(localRule.id) };
+      }
+      return localRule;
+    });
+  }
+
+  // Update in-memory and persist
+  inMemory = local;
+  await persist(inMemory);
+  notify();
+  return deepClone(inMemory);
+}
+
 function normalizeBinding(binding) {
   if (!binding || typeof binding !== 'object') return null;
   const type = binding.type === 'mouse' ? 'mouse' : 'keyboard';

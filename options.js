@@ -1,4 +1,9 @@
-import { loadSettings, updateSettings, subscribe } from './settings.js';
+import {
+  loadSettings,
+  updateSettings,
+  subscribe,
+  mergeCloudSettings,
+} from './settings.js';
 import {
   saveSettingsToCloud,
   loadSettingsFromCloud,
@@ -494,14 +499,15 @@ function wireEvents() {
       try {
         await signIn(true);
         const cloudSettings = await loadSettingsFromCloud();
-        await updateSettings(cloudSettings);
-        initial = { ...initial, ...cloudSettings };
+        // Merge cloud into local instead of replacing
+        const merged = await mergeCloudSettings(cloudSettings);
+        initial = merged;
         bindValues(initial);
         renderCustomRules(initial.customRules || []);
         renderApiKeys(initial.apiKeys || {});
         renderBuiltInRules(initial.builtInRules || []);
         renderShortcuts(initial.shortcuts || {});
-        els.cloudStatus.textContent = 'Loaded from cloud.';
+        els.cloudStatus.textContent = 'Merged from cloud.';
       } catch (e) {
         els.cloudStatus.textContent = 'Cloud load failed: ' + (e?.message || e);
       }
