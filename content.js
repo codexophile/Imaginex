@@ -249,9 +249,39 @@
         const response = await fetch(img.src);
         const blob = await response.blob();
 
+        // Convert to PNG format (universally supported by Clipboard API)
+        // Create a canvas to redraw the image
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Create a temporary image element to load the blob
+        const tempImg = new Image();
+        tempImg.crossOrigin = 'anonymous';
+
+        await new Promise((resolve, reject) => {
+          tempImg.onload = resolve;
+          tempImg.onerror = reject;
+          tempImg.src = URL.createObjectURL(blob);
+        });
+
+        // Set canvas size to image size
+        canvas.width = tempImg.naturalWidth;
+        canvas.height = tempImg.naturalHeight;
+
+        // Draw image to canvas
+        ctx.drawImage(tempImg, 0, 0);
+
+        // Clean up object URL
+        URL.revokeObjectURL(tempImg.src);
+
+        // Convert canvas to PNG blob
+        const pngBlob = await new Promise(resolve => {
+          canvas.toBlob(resolve, 'image/png');
+        });
+
         // Copy to clipboard
         await navigator.clipboard.write([
-          new ClipboardItem({ [blob.type]: blob }),
+          new ClipboardItem({ 'image/png': pngBlob }),
         ]);
 
         // Visual feedback
