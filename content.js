@@ -24,6 +24,7 @@
   let suppressClickExitOnce = false;
   let wasActualDrag = false;
   let suppressContextMenuOnce = false;
+  let zoomLockToolbar = null;
 
   // Shortcuts state
   let shortcutBindings = {
@@ -192,12 +193,116 @@
     }
   }
 
+  function createZoomLockToolbar() {
+    if (zoomLockToolbar) return zoomLockToolbar;
+
+    const toolbar = document.createElement('div');
+    toolbar.id = 'imagus-zoom-lock-toolbar';
+    toolbar.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      border-radius: 8px;
+      padding: 8px;
+      display: none;
+      gap: 8px;
+      align-items: center;
+      z-index: 1000000;
+      pointer-events: auto;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    `;
+
+    // Copy to clipboard button
+    const copyBtn = document.createElement('button');
+    copyBtn.id = 'imagus-toolbar-copy';
+    copyBtn.innerHTML = '📋';
+    copyBtn.title = 'Copy image to clipboard';
+    copyBtn.style.cssText = `
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      transition: background 0.2s, transform 0.1s;
+      pointer-events: auto;
+    `;
+    copyBtn.onmouseover = () => {
+      copyBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+      copyBtn.style.transform = 'scale(1.05)';
+    };
+    copyBtn.onmouseout = () => {
+      copyBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+      copyBtn.style.transform = 'scale(1)';
+    };
+    copyBtn.onclick = async e => {
+      e.stopPropagation();
+      if (!hoverOverlay) return;
+
+      const img = hoverOverlay.querySelector('img');
+      if (!img || !img.src) return;
+
+      try {
+        // Fetch the image and convert to blob
+        const response = await fetch(img.src);
+        const blob = await response.blob();
+
+        // Copy to clipboard
+        await navigator.clipboard.write([
+          new ClipboardItem({ [blob.type]: blob }),
+        ]);
+
+        // Visual feedback
+        const originalText = copyBtn.innerHTML;
+        copyBtn.innerHTML = '✓';
+        copyBtn.style.background = 'rgba(0, 255, 0, 0.3)';
+        setTimeout(() => {
+          copyBtn.innerHTML = originalText;
+          copyBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+        }, 1000);
+      } catch (err) {
+        console.error('Failed to copy image:', err);
+        // Visual feedback for error
+        const originalText = copyBtn.innerHTML;
+        copyBtn.innerHTML = '✗';
+        copyBtn.style.background = 'rgba(255, 0, 0, 0.3)';
+        setTimeout(() => {
+          copyBtn.innerHTML = originalText;
+          copyBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+        }, 1000);
+      }
+    };
+
+    toolbar.appendChild(copyBtn);
+    document.body.appendChild(toolbar);
+    zoomLockToolbar = toolbar;
+    return toolbar;
+  }
+
+  function showZoomLockToolbar() {
+    if (!zoomLockToolbar) {
+      createZoomLockToolbar();
+    }
+    if (zoomLockToolbar) {
+      zoomLockToolbar.style.display = 'flex';
+    }
+  }
+
+  function hideZoomLockToolbar() {
+    if (zoomLockToolbar) {
+      zoomLockToolbar.style.display = 'none';
+    }
+  }
+
   function enterLockedZoomMode() {
     if (!hoverOverlay || lockedZoomMode) return;
     lockedZoomMode = true;
 
     injectLockedZoomStyles();
     hoverOverlay.classList.add('locked-zoom-mode');
+    showZoomLockToolbar();
 
     // Center overlay in viewport and prepare the image for panning
     const img = hoverOverlay.querySelector('img');
@@ -247,6 +352,7 @@
     currentZoomLevel = 1; // Reset zoom level when exiting locked zoom mode
 
     hideLockedZoomBarrier();
+    hideZoomLockToolbar();
 
     if (hoverOverlay) {
       hoverOverlay.classList.remove('locked-zoom-mode');

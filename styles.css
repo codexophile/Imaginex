@@ -210,6 +210,63 @@ div[data-testid*='overlay']:empty {
   animation: nopopup-pulse 2s ease-in-out infinite;
 }
 
+/* Zoom Lock Toolbar */
+#imagus-zoom-lock-toolbar {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 8px;
+  padding: 8px;
+  display: none;
+  gap: 8px;
+  align-items: center;
+  z-index: 1000000;
+  pointer-events: auto;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  animation: imagus-toolbar-fadeIn 0.2s ease-in-out;
+}
+
+@keyframes imagus-toolbar-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#imagus-toolbar-copy {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: background 0.2s, transform 0.1s;
+  pointer-events: auto;
+}
+
+#imagus-toolbar-copy:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+#imagus-toolbar-copy:active {
+  transform: scale(0.95);
+}
+
+/* Dark mode support for toolbar */
+@media (prefers-color-scheme: dark) {
+  #imagus-zoom-lock-toolbar {
+    background: rgba(0, 0, 0, 0.9);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  }
+}
+
 /* Disable all animations when user preference is set */
 .imagus-no-animations #image-enlarger-overlay {
   transition: none !important;
@@ -236,4 +293,8 @@ div[data-testid*='overlay']:empty {
 
 .imagus-no-animations .image-enlarger-no-popup-alt {
   transition: none !important;
+}
+
+.imagus-no-animations #imagus-zoom-lock-toolbar {
+  animation: none !important;
 }
