@@ -1080,12 +1080,18 @@
     }
 
     const candidates = [];
-    for (const part of raw.split(',')) {
+    // Split by comma followed by whitespace, or comma at end of string.
+    // This avoids splitting URLs that contain commas (like Amazon/IMDb _CR... params).
+    const parts = raw.split(/,\s+/);
+    for (const part of parts) {
       const trimmed = part.trim();
       if (!trimmed) continue;
+      // Split URL and descriptor by last whitespace to separate them safely
       const pieces = trimmed.split(/\s+/);
       const url = pieces[0];
-      const descriptor = pieces[1] || '';
+      // If there are more pieces, the last one is likely the descriptor, others are part of URL?
+      // Actually standard says URL cannot contain spaces. So splitting by space is fine.
+      const descriptor = pieces.length > 1 ? pieces[pieces.length - 1] : '';
 
       if (!url) continue;
       if (descriptor.endsWith('w')) {
@@ -1112,6 +1118,33 @@
     return candidates[0].url;
   }
 
+  // Strip Amazon/IMDb image transformation parameters to get original high-res version
+  function stripAmazonParams(url) {
+    if (!url) return url;
+    if (url.includes('media-amazon.com/images/')) {
+      const v1Index = url.indexOf('_V1_');
+      if (v1Index !== -1) {
+        const prefix = url.slice(0, v1Index + 4); // Include _V1_
+        const remainder = url.slice(v1Index + 4);
+        const extIndex = remainder.lastIndexOf('.');
+        if (extIndex === -1) return url;
+
+        const extension = remainder.slice(extIndex); // e.g. .jpg
+        const params = remainder.slice(0, extIndex); // e.g. CR0,0,100,100_QL...
+
+        // If params start with a 'Master Crop' (CR...), keep it.
+        // Otherwise, strip everything to get the full uncropped original.
+        const crMatch = params.match(/^(CR\d+,\d+,\d+,\d+)/);
+        if (crMatch) {
+          return prefix + crMatch[1] + extension;
+        } else {
+          return prefix + extension;
+        }
+      }
+    }
+    return url;
+  }
+
   // Derive best URL from an image-related element (picture/source/img)
   function bestSrcFromElement(el) {
     if (!el) return null;
@@ -1122,14 +1155,14 @@
         const any = webp || el.querySelector('source[srcset]');
         const srcset = any?.getAttribute('srcset') || '';
         const fromSource = pickBestFromSrcsetString(srcset);
-        if (fromSource) return fromSource;
+        if (fromSource) return stripAmazonParams(fromSource);
         const img = el.querySelector('img');
         if (img) return bestSrcFromElement(img);
       }
       if (tag === 'source') {
         const srcset = el.getAttribute('srcset') || '';
         const fromSet = pickBestFromSrcsetString(srcset);
-        if (fromSet) return fromSet;
+        if (fromSet) return stripAmazonParams(fromSet);
       }
       if (tag === 'img') {
         const pic = el.closest?.('picture');
@@ -1138,20 +1171,21 @@
           const any = webp || pic.querySelector('source[srcset]');
           const srcset = any?.getAttribute('srcset') || '';
           const fromSource = pickBestFromSrcsetString(srcset);
-          if (fromSource) return fromSource;
+          if (fromSource) return stripAmazonParams(fromSource);
         }
         const fromSet = pickBestFromSrcsetString(
           el.getAttribute('srcset') || '',
         );
-        if (fromSet) return fromSet;
-        return el.currentSrc || el.src || null;
+        if (fromSet) return stripAmazonParams(fromSet);
+        const fallback = el.currentSrc || el.src || null;
+        return stripAmazonParams(fallback);
       }
       // Fallback: try common attributes
       const rawSet = el.getAttribute?.('srcset') || '';
       const fromSet = pickBestFromSrcsetString(rawSet);
-      if (fromSet) return fromSet;
+      if (fromSet) return stripAmazonParams(fromSet);
       const raw = el.getAttribute?.('src') || '';
-      return raw || null;
+      return stripAmazonParams(raw) || null;
     } catch (_) {
       return null;
     }
