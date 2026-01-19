@@ -716,6 +716,22 @@
     return true;
   }
 
+  // Determine if a custom rule should block the current element from triggering overlays
+  function findBlockingRule(element) {
+    if (!customRules || customRules.length === 0 || !element) return null;
+    for (const rule of customRules) {
+      if (!rule || !rule.block) continue;
+      try {
+        if (element.matches(rule.selector) || element.closest(rule.selector)) {
+          return rule;
+        }
+      } catch (_) {
+        // Ignore selector errors for blocking rules
+      }
+    }
+    return null;
+  }
+
   // Load settings directly from storage (MV3 content scripts can't reliably dynamic-import extension modules)
   chrome.storage.local.get([SETTINGS_INTERNAL_KEY], result => {
     console.log(
@@ -1319,6 +1335,16 @@
       return null;
     }
 
+    const blockingRule = findBlockingRule(element);
+    if (blockingRule) {
+      console.log(
+        'Custom block rule matched, skipping overlay:',
+        blockingRule.name || blockingRule.selector,
+        element
+      );
+      return null;
+    }
+
     for (const rule of customRules) {
       try {
         // Check if the element or any ancestor matches the selector
@@ -1814,6 +1840,15 @@
       return;
     }
 
+    const blockingRule = findBlockingRule(trigger) || findBlockingRule(siblingImg);
+    if (blockingRule) {
+      console.log(
+        'Custom block rule prevented hover (sibling pattern):',
+        blockingRule.name || blockingRule.selector
+      );
+      return;
+    }
+
     currentImg = siblingImg;
     currentTrigger = trigger;
 
@@ -1864,6 +1899,16 @@
 
     // Skip if not an image or same image
     if (img.tagName !== 'IMG' || img === currentImg) {
+      return;
+    }
+
+    const blockingRule = findBlockingRule(img);
+    if (blockingRule) {
+      console.log(
+        'Custom block rule prevented hover:',
+        blockingRule.name || blockingRule.selector,
+        img
+      );
       return;
     }
 
@@ -2005,6 +2050,16 @@
       function (event) {
         const target = event.target;
         if (!(target instanceof Element)) {
+          return;
+        }
+
+        const blockingRule = findBlockingRule(target);
+        if (blockingRule) {
+          console.log(
+            'Custom block rule matched: skipping hover',
+            blockingRule.name || blockingRule.selector,
+            target
+          );
           return;
         }
 
@@ -2444,6 +2499,16 @@
       return;
     }
 
+    const blockingRule = findBlockingRule(anchor);
+    if (blockingRule) {
+      console.log(
+        'Custom block rule prevented hover (anchor):',
+        blockingRule.name || blockingRule.selector,
+        anchor
+      );
+      return;
+    }
+
     // Check if href points to an image
     if (!isImageURL(href)) {
       return;
@@ -2512,6 +2577,16 @@
       return;
     }
 
+    const blockingRule = findBlockingRule(element);
+    if (blockingRule) {
+      console.log(
+        'Custom block rule prevented hover (background image):',
+        blockingRule.name || blockingRule.selector,
+        element
+      );
+      return;
+    }
+
     const bgUrl = getBackgroundImageUrl(element);
     if (!bgUrl) {
       return;
@@ -2547,6 +2622,16 @@
 
     // Skip if same element
     if (element === currentImg) {
+      return;
+    }
+
+    const blockingRule = findBlockingRule(element);
+    if (blockingRule) {
+      console.log(
+        'Custom block rule prevented hover (custom element):',
+        blockingRule.name || blockingRule.selector,
+        element
+      );
       return;
     }
 

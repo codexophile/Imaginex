@@ -11,6 +11,7 @@ A Chromium Manifest V3 extension that displays larger images when hovering over 
 - ⌨️ **Shortcuts + Locked Zoom**: Assign keyboard/mouse shortcuts to toggle locked zoom, zoom in/out; press Escape to hide
 - 📱 **Responsive**: Works on any screen size
 - 🎨 **Custom Rules**: Define rules to find higher-quality images for specific elements (e.g., YouTube thumbnails)
+- 🚫 **Blocking Rules**: Silence matched elements with per-domain custom block rules
 - 🧭 **Target Page Extractors**: No‑code rules that follow links and extract images from the destination page via CSS selectors
 - 🖼️ **Gallery Support**: Custom rules can return multiple URLs; navigate with arrow keys or on-screen controls
 - 🌐 **Per‑Domain Scoping**: Allow or exclude domains (with wildcards) for both custom and built‑in rules
@@ -127,6 +128,7 @@ const SCALE_THRESHOLD = 1.2; // Minimum scale factor (20% smaller) to trigger
 - **Built-in Rules**: Add/toggle rules in `settings.js` and gate behavior in `content.js` via `isRuleEnabled(id)`; edit per‑rule Allowed/Excluded domains in Options
 - **Shortcuts**: Configure in Options → Shortcuts; content reads and applies bindings live
 - **Custom Rules**: Either configure a Target Page URL Template and Selectors (no code) or use user scripts that call `returnURL(url)` or `returnElement(el)`; see CUSTOM_RULES.md
+- **Blocking Rules**: Create a custom rule with “Block matching elements” to prevent overlays on specific selectors (useful for ads/icons)
 
 ## Settings & Options Page
 

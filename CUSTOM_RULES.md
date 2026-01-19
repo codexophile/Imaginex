@@ -58,6 +58,19 @@ Notes:
 
 Your script must call `returnURL(urlOrArray)` or `returnElement(el)`. Returning an array of URLs enables gallery navigation.
 
+## Blocking Rules (Skip the Overlay)
+
+You can now create a custom rule that **blocks** matching elements from triggering the extension at all. This is useful for:
+
+- Silencing ads, icons, or UI widgets that shouldn't show a preview
+- Preventing known-problematic selectors from running other rules
+
+How to create one:
+
+- In Options → Custom Rules, check **“Block matching elements (no popup)”** when editing a rule.
+- Provide a CSS selector and (optionally) Allowed/Excluded domains. Scripts/Target Page extractors are not required when blocking.
+- Blocking rules run before extraction or user scripts. When a match is blocked, the overlay will not appear.
+
 ## Examples
 
 ### Example 1: Target Page — Article Image

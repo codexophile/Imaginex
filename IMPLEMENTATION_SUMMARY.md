@@ -14,6 +14,7 @@ This covers elements without image tags, sites with low‑quality thumbnails but
 ### 1. Settings Module (`settings.js`)
 
 - Added `customRules` array to default settings (includes a YouTube example).
+- Custom rules support a `block` flag to stop matched elements from triggering overlays.
 - Persistent storage under `__settings_v1` with merging of defaults and user edits.
 - Built‑in rules catalog with toggle states and per‑rule domain filters (`allowDomains`/`excludeDomains`, wildcards supported).
 - Timestamped metadata per field/rule and last-write-wins merge for cloud sync so newer local edits are preserved.
@@ -21,6 +22,7 @@ This covers elements without image tags, sites with low‑quality thumbnails but
 ### 2. Options Page UI (`options.html`)
 
 - “Custom Rules” section with Add/Edit/Delete, enable/disable, and a tester.
+- Added “Block matching elements” toggle for custom rules to silence specific selectors without disabling the whole site.
 - Target Page inputs: URL Template, Selectors (one per line, supports `@attr` and `| srcsetBest`), and Max URLs.
 - “Built‑in Rules” section with detection behaviors and site‑specific CSS fixes, plus per‑rule domain editors.
 - “Shortcuts” section to assign keyboard/mouse bindings for locked zoom toggle and zoom in/out.
@@ -35,6 +37,7 @@ This covers elements without image tags, sites with low‑quality thumbnails but
 ### 4. Content Script (`content.js`)
 
 - Event delegation for hover detection on `IMG`, `A`, and elements with `background-image`.
+- Early blocking pass honoring custom rules flagged with `block`, preventing overlays for matched selectors.
 - Best source selection from `srcset`/`picture`/`source` or anchor `href` if it points to an image.
 - Target Page extraction: builds target URL from a template, requests HTML via background, parses and extracts absolute image URLs from selectors; supports `@attr` and `| srcsetBest`; caches results briefly; supports gallery via Max URLs.
 - Executes custom user scripts via background `userScripts` bridge; supports returning a single URL or an array (gallery).

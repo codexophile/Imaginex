@@ -282,9 +282,27 @@
       font-size: 11px;
     }
 
+    .rule-badge {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: #ffe9c7;
+      color: #7b4a00;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
     @media (prefers-color-scheme: dark) {
       .rule-details code {
         background: rgba(255, 255, 255, 0.15);
+      }
+
+      .rule-badge {
+        background: rgba(255, 193, 122, 0.18);
+        color: #ffc17a;
       }
     }
 
@@ -661,6 +679,16 @@
                 <label for="ruleSelector">CSS Selector</label>
                 <input type="text" id="ruleSelector" placeholder="e.g., a#thumbnail img[src*='ytimg.com']" />
                 <div class="help-text">CSS selector to match elements (e.g., img, a, div)</div>
+              </div>
+
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" id="ruleBlockMode" />
+                  Block matching elements (no popup)
+                </label>
+                <div class="help-text">
+                  Stop the extension on these matches. Use this to silence specific widgets, ads, or icons without disabling the whole site.
+                </div>
               </div>
 
               <div class="form-group">

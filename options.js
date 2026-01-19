@@ -355,6 +355,7 @@ async function init() {
   els.ruleName = $('ruleName');
   els.ruleSelector = $('ruleSelector');
   els.ruleUserScript = $('ruleUserScript');
+  els.ruleBlockMode = $('ruleBlockMode');
   els.ruleTargetUrlTemplate = $('ruleTargetUrlTemplate');
   els.ruleTargetSelectors = $('ruleTargetSelectors');
   els.ruleTargetMaxResults = $('ruleTargetMaxResults');
@@ -912,6 +913,9 @@ function renderCustomRules(rules) {
           )}`
         );
       }
+      const blockBadge = rule.block
+        ? '<span class="rule-badge" title="Blocks matches from triggering the overlay">Blocks</span>'
+        : '';
       // Target Page summary
       const tp = rule.targetPage || {};
       const hasTpSelectors = Array.isArray(tp.selectors)
@@ -937,6 +941,7 @@ function renderCustomRules(rules) {
               ${rule.enabled ? 'checked' : ''} />
             ${escapeHtml(rule.name)}
           </span>
+          ${blockBadge}
         </div>
         <div class="rule-actions">
           <button class="edit-rule-btn" data-rule-id="${rule.id}">Edit</button>
@@ -949,6 +954,11 @@ function renderCustomRules(rules) {
         <div><strong>Selector:</strong> <code>${escapeHtml(
           rule.selector
         )}</code></div>
+        ${
+          rule.block
+            ? '<div><strong>Action:</strong> Block matches (no popup)</div>'
+            : ''
+        }
         ${tpSummary}
         ${
           rule.userScript
@@ -994,6 +1004,7 @@ function handleAddRule() {
   els.ruleName.value = '';
   els.ruleSelector.value = '';
   els.ruleUserScript.value = '';
+  if (els.ruleBlockMode) els.ruleBlockMode.checked = false;
   if (els.ruleTargetUrlTemplate) els.ruleTargetUrlTemplate.value = '';
   if (els.ruleTargetSelectors) els.ruleTargetSelectors.value = '';
   if (els.ruleTargetMaxResults) els.ruleTargetMaxResults.value = '50';
@@ -1015,6 +1026,7 @@ function handleEditRule(e) {
   els.ruleSelector.value = rule.selector;
   els.ruleUserScript.value =
     typeof rule.userScript === 'string' ? rule.userScript : '';
+  if (els.ruleBlockMode) els.ruleBlockMode.checked = !!rule.block;
   // Target page fields
   const tp = rule.targetPage || {};
   if (els.ruleTargetUrlTemplate)
@@ -1040,6 +1052,7 @@ async function handleSaveRule() {
   const name = els.ruleName.value.trim();
   const selector = els.ruleSelector.value.trim();
   const userScript = (els.ruleUserScript.value || '').trim();
+  const blockMatches = !!(els.ruleBlockMode && els.ruleBlockMode.checked);
   // Target page fields
   const targetUrlTemplate = (els.ruleTargetUrlTemplate?.value || '').trim();
   const targetSelectorsRaw = (els.ruleTargetSelectors?.value || '').trim();
@@ -1070,7 +1083,7 @@ async function handleSaveRule() {
     return false;
   }
 
-  if (!userScript && targetSelectors.length === 0) {
+  if (!blockMatches && !userScript && targetSelectors.length === 0) {
     alert(
       'Provide either Target Page Selectors (to auto-extract) or Custom JavaScript.'
     );
@@ -1087,6 +1100,7 @@ async function handleSaveRule() {
         ...rules[index],
         name,
         selector,
+        block: blockMatches,
         userScript: userScript || undefined,
         targetPage:
           targetSelectors.length || targetUrlTemplate
@@ -1111,6 +1125,7 @@ async function handleSaveRule() {
       name,
       enabled: true,
       selector,
+      block: blockMatches,
       userScript: userScript || undefined,
       targetPage:
         targetSelectors.length || targetUrlTemplate
@@ -1154,9 +1169,16 @@ async function handleTestRule() {
   const name = els.ruleName.value.trim() || 'Untitled Rule';
   const selector = els.ruleSelector.value.trim();
   const userScript = (els.ruleUserScript.value || '').trim();
+  const blockMatches = !!(els.ruleBlockMode && els.ruleBlockMode.checked);
 
   if (!selector) {
     alert('CSS selector is required to test the rule.');
+    return;
+  }
+  if (blockMatches) {
+    els.ruleTestResults.style.display = 'block';
+    els.ruleTestDetails.innerHTML =
+      '<div style="color:#e57373;">This rule blocks matches instead of returning URLs. No test needed.</div>';
     return;
   }
   if (!userScript) {
