@@ -125,8 +125,8 @@ function renderShortcuts(shortcuts) {
             <button class="secondary clear-shortcut" data-func-id="${
               fn.id
             }" data-slot-index="${index}" ${
-          hasValue ? '' : 'disabled'
-        }>Clear</button>
+              hasValue ? '' : 'disabled'
+            }>Clear</button>
           </div>
         `;
       })
@@ -176,7 +176,7 @@ function stopShortcutCapture(message) {
   ];
   const label = message || formatShortcut(current);
   const el = document.querySelector(
-    `[data-shortcut-value="${funcId}-${slotIndex}"]`
+    `[data-shortcut-value="${funcId}-${slotIndex}"]`,
   );
   if (el) {
     el.classList.remove('active');
@@ -189,7 +189,7 @@ function setCaptureStatus(text, isActive = false) {
   if (!activeCapture) return;
   const { funcId, slotIndex } = activeCapture;
   const el = document.querySelector(
-    `[data-shortcut-value="${funcId}-${slotIndex}"]`
+    `[data-shortcut-value="${funcId}-${slotIndex}"]`,
   );
   if (el) {
     if (isActive) el.classList.add('active');
@@ -440,7 +440,7 @@ function wireEvents() {
       const el = els[id];
       const evt = el.type === 'checkbox' ? 'change' : 'input';
       el.addEventListener(evt, onChange);
-    }
+    },
   );
   els.saveBtn.addEventListener('click', () => doSave(false));
   els.resetBtn.addEventListener('click', resetDefaults);
@@ -620,14 +620,14 @@ function renderApiKeys(apiKeys) {
       <div style="flex:1;">
         <strong>${escapeHtml(name)}</strong>
         <div style="opacity:.7; font-size:12px; font-family:monospace;">${escapeHtml(
-          value.slice(0, 12)
+          value.slice(0, 12),
         )}${'*'.repeat(Math.max(0, value.length - 12))}</div>
       </div>
       <button class="danger delete-api-key-btn" data-key-name="${escapeHtml(
-        name
+        name,
       )}">Delete</button>
     </div>
-  `
+  `,
     )
     .join('');
 
@@ -760,7 +760,7 @@ async function handleToggleBuiltInRule(e) {
   const enabled = e.target.checked;
 
   const builtInRules = (initial.builtInRules || []).map(r =>
-    r.id === ruleId ? { ...r, enabled } : r
+    r.id === ruleId ? { ...r, enabled } : r,
   );
 
   await updateSettings({ builtInRules });
@@ -789,10 +789,10 @@ async function handleSaveBuiltInDomains(e) {
 
   // Get input values
   const allowInput = document.querySelector(
-    `.builtin-allow-input[data-rule-id="${ruleId}"]`
+    `.builtin-allow-input[data-rule-id="${ruleId}"]`,
   );
   const excludeInput = document.querySelector(
-    `.builtin-exclude-input[data-rule-id="${ruleId}"]`
+    `.builtin-exclude-input[data-rule-id="${ruleId}"]`,
   );
 
   if (!allowInput || !excludeInput) return;
@@ -809,7 +809,7 @@ async function handleSaveBuiltInDomains(e) {
 
   // Update the rule
   const builtInRules = (initial.builtInRules || []).map(r =>
-    r.id === ruleId ? { ...r, allowDomains, excludeDomains } : r
+    r.id === ruleId ? { ...r, allowDomains, excludeDomains } : r,
   );
 
   await updateSettings({ builtInRules });
@@ -830,7 +830,7 @@ function handleCancelBuiltInDomains(e) {
 
     // Re-enable the edit button
     const editBtn = document.querySelector(
-      `.edit-builtin-domains-btn[data-rule-id="${ruleId}"]`
+      `.edit-builtin-domains-btn[data-rule-id="${ruleId}"]`,
     );
     if (editBtn) {
       editBtn.textContent = 'Edit Domains';
@@ -852,7 +852,7 @@ async function handleAddApiKey() {
 
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
     alert(
-      'Key name must start with a letter and contain only letters, numbers, and underscores.'
+      'Key name must start with a letter and contain only letters, numbers, and underscores.',
     );
     return;
   }
@@ -899,8 +899,8 @@ function renderCustomRules(rules) {
       if (Array.isArray(rule.allowDomains) && rule.allowDomains.length > 0) {
         domainInfo.push(
           `<strong>Allowed:</strong> ${escapeHtml(
-            rule.allowDomains.join(', ')
-          )}`
+            rule.allowDomains.join(', '),
+          )}`,
         );
       }
       if (
@@ -909,8 +909,8 @@ function renderCustomRules(rules) {
       ) {
         domainInfo.push(
           `<strong>Excluded:</strong> ${escapeHtml(
-            rule.excludeDomains.join(', ')
-          )}`
+            rule.excludeDomains.join(', '),
+          )}`,
         );
       }
       const blockBadge = rule.block
@@ -923,11 +923,11 @@ function renderCustomRules(rules) {
         : String(tp.selectors || '').trim().length > 0;
       const tpSummary = hasTpSelectors
         ? `<div><strong>Target Page:</strong> URL=${escapeHtml(
-            tp.urlTemplate || '{href}'
+            tp.urlTemplate || '{href}',
           )}, Selectors=${escapeHtml(
             Array.isArray(tp.selectors)
               ? String(tp.selectors.length) + ' line(s)'
-              : tp.selectors || ''
+              : tp.selectors || '',
           )}, Max=${escapeHtml(String(tp.maxResults || 1))}</div>`
         : '';
       return `
@@ -952,7 +952,7 @@ function renderCustomRules(rules) {
       </div>
       <div class="rule-details">
         <div><strong>Selector:</strong> <code>${escapeHtml(
-          rule.selector
+          rule.selector,
         )}</code></div>
         ${
           rule.block
@@ -963,14 +963,14 @@ function renderCustomRules(rules) {
         ${
           rule.userScript
             ? `<div><strong>Script:</strong> ${escapeHtml(
-                (rule.userScript || '').slice(0, 80)
+                (rule.userScript || '').slice(0, 80),
               )}...</div>`
             : '<div style="color:#e57373;">No Custom JavaScript</div>'
         }
         ${
           domainInfo.length > 0
             ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1); font-size: 11px;">${domainInfo.join(
-                ' | '
+                ' | ',
               )}</div>`
             : ''
         }
@@ -1064,7 +1064,7 @@ async function handleSaveRule() {
     : [];
   const targetMaxResults = Math.max(
     1,
-    Number(els.ruleTargetMaxResults?.value || '50') || 50
+    Number(els.ruleTargetMaxResults?.value || '50') || 50,
   );
 
   // Parse domain fields
@@ -1085,7 +1085,7 @@ async function handleSaveRule() {
 
   if (!blockMatches && !userScript && targetSelectors.length === 0) {
     alert(
-      'Provide either Target Page Selectors (to auto-extract) or Custom JavaScript.'
+      'Provide either Target Page Selectors (to auto-extract) or Custom JavaScript.',
     );
     return false;
   }
@@ -1220,7 +1220,7 @@ async function handleTestRule() {
     const details = els.ruleTestDetails;
     if (!response || response.ok === false) {
       details.innerHTML = `<div style="color:#e57373;">Test failed: ${escapeHtml(
-        response?.error || 'Unknown error'
+        response?.error || 'Unknown error',
       )}</div>`;
       return;
     }
@@ -1252,7 +1252,7 @@ async function handleTestRule() {
   } catch (e) {
     els.ruleTestResults.style.display = 'block';
     els.ruleTestDetails.innerHTML = `<div style="color:#e57373;">Test error: ${escapeHtml(
-      e.message || String(e)
+      e.message || String(e),
     )}</div>`;
   }
 }

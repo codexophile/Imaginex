@@ -426,7 +426,7 @@
     // Not locked: check if this mouse event matches the zoom shortcut to enter locked mode
     const zoomBindings = shortcutBindings.zoomFullResolution || [];
     const isZoomShortcut = zoomBindings.some(b =>
-      bindingMatchesMouseEvent(b, e)
+      bindingMatchesMouseEvent(b, e),
     );
     if (isZoomShortcut) {
       enterLockedZoomMode();
@@ -535,7 +535,7 @@
       const hostname = window.location.hostname;
       // Filter custom rules: enabled AND applies to this domain
       customRules = raw.customRules.filter(
-        r => r && r.enabled && shouldRunRule(r, hostname)
+        r => r && r.enabled && shouldRunRule(r, hostname),
       );
       console.log(
         'Loaded custom rules:',
@@ -543,7 +543,7 @@
         'of',
         (raw.customRules || []).length,
         'for domain:',
-        hostname
+        hostname,
       );
     }
     if (Array.isArray(raw.builtInRules)) {
@@ -563,26 +563,26 @@
       if (Array.isArray(raw.shortcuts.zoomFullResolution)) {
         console.log(
           'zoomFullResolution array found, length:',
-          raw.shortcuts.zoomFullResolution.length
+          raw.shortcuts.zoomFullResolution.length,
         );
         shortcutBindings.zoomFullResolution =
           raw.shortcuts.zoomFullResolution.filter(
-            b => b && typeof b === 'object' && b.type && b.combo
+            b => b && typeof b === 'object' && b.type && b.combo,
           );
       } else {
         console.log(
           'zoomFullResolution is NOT an array:',
-          raw.shortcuts.zoomFullResolution
+          raw.shortcuts.zoomFullResolution,
         );
       }
       if (Array.isArray(raw.shortcuts.zoomIn)) {
         shortcutBindings.zoomIn = raw.shortcuts.zoomIn.filter(
-          b => b && typeof b === 'object' && b.type && b.combo
+          b => b && typeof b === 'object' && b.type && b.combo,
         );
       }
       if (Array.isArray(raw.shortcuts.zoomOut)) {
         shortcutBindings.zoomOut = raw.shortcuts.zoomOut.filter(
-          b => b && typeof b === 'object' && b.type && b.combo
+          b => b && typeof b === 'object' && b.type && b.combo,
         );
       }
       console.log('Final shortcutBindings:', JSON.stringify(shortcutBindings));
@@ -691,7 +691,7 @@
         rule.excludeDomains.length > 0
       ) {
         const isExcluded = rule.excludeDomains.some(pattern =>
-          matchesDomain(hostname, pattern)
+          matchesDomain(hostname, pattern),
         );
         return !isExcluded;
       }
@@ -700,7 +700,7 @@
 
     // Check if hostname matches any allowed domain
     const isAllowed = rule.allowDomains.some(pattern =>
-      matchesDomain(hostname, pattern)
+      matchesDomain(hostname, pattern),
     );
 
     if (!isAllowed) return false;
@@ -708,7 +708,7 @@
     // Also check excludeDomains if present (exclude takes priority)
     if (Array.isArray(rule.excludeDomains) && rule.excludeDomains.length > 0) {
       const isExcluded = rule.excludeDomains.some(pattern =>
-        matchesDomain(hostname, pattern)
+        matchesDomain(hostname, pattern),
       );
       return !isExcluded;
     }
@@ -736,7 +736,7 @@
   chrome.storage.local.get([SETTINGS_INTERNAL_KEY], result => {
     console.log(
       'Loading settings from storage:',
-      result[SETTINGS_INTERNAL_KEY]
+      result[SETTINGS_INTERNAL_KEY],
     );
     applySettingsFromStorage(result[SETTINGS_INTERNAL_KEY]);
   });
@@ -1035,7 +1035,7 @@
       'Height ratio:',
       heightRatio.toFixed(2),
       'Will enlarge:',
-      widthRatio > 1.2 || heightRatio > 1.2
+      widthRatio > 1.2 || heightRatio > 1.2,
     );
 
     // Only show if the image is scaled down by at least 20% in either dimension
@@ -1141,7 +1141,7 @@
           if (fromSource) return fromSource;
         }
         const fromSet = pickBestFromSrcsetString(
-          el.getAttribute('srcset') || ''
+          el.getAttribute('srcset') || '',
         );
         if (fromSet) return fromSet;
         return el.currentSrc || el.src || null;
@@ -1162,17 +1162,17 @@
     if (!isRuleEnabled('sibling-image-pattern')) return null;
     if (!trigger || !trigger.parentElement) return null;
     const siblings = Array.from(trigger.parentElement.children).filter(
-      node => node !== trigger
+      node => node !== trigger,
     );
 
     for (const sib of siblings) {
       const img = sib.querySelector(
-        ':scope > img:not(#image-enlarger-overlay-img)'
+        ':scope > img:not(#image-enlarger-overlay-img)',
       );
       if (img) {
         console.log(
           '[Built-in Rule: Sibling Image Pattern] Found sibling image for trigger:',
-          trigger
+          trigger,
         );
         return img;
       }
@@ -1340,7 +1340,7 @@
       console.log(
         'Custom block rule matched, skipping overlay:',
         blockingRule.name || blockingRule.selector,
-        element
+        element,
       );
       return null;
     }
@@ -1370,7 +1370,7 @@
             console.warn(
               'Target-page extraction failed for rule',
               rule.name,
-              e
+              e,
             );
           }
         }
@@ -1451,7 +1451,7 @@
               { type: 'imagus:execUserScript', code: rule.userScript, ctx },
               () => {
                 // background handles execution; result comes via DOM event
-              }
+              },
             );
             // Safety timeout
             setTimeout(() => {
@@ -1469,7 +1469,7 @@
           if (Array.isArray(urlFromScript) && urlFromScript.length > 0) {
             // Filter to valid URLs
             const validUrls = urlFromScript.filter(
-              url => typeof url === 'string' && /^https?:\/\//i.test(url)
+              url => typeof url === 'string' && /^https?:\/\//i.test(url),
             );
             if (validUrls.length > 0) {
               try {
@@ -1546,8 +1546,8 @@
           margin,
           Math.min(
             viewportWidth - overlayWidth - margin,
-            (viewportWidth - overlayWidth) / 2
-          )
+            (viewportWidth - overlayWidth) / 2,
+          ),
         );
       }
     }
@@ -1565,8 +1565,8 @@
           margin,
           Math.min(
             viewportHeight - overlayHeight - margin,
-            (viewportHeight - overlayHeight) / 2
-          )
+            (viewportHeight - overlayHeight) / 2,
+          ),
         );
       }
     } else if (top + overlayHeight > viewportHeight - margin) {
@@ -1578,8 +1578,8 @@
           margin,
           Math.min(
             viewportHeight - overlayHeight - margin,
-            (viewportHeight - overlayHeight) / 2
-          )
+            (viewportHeight - overlayHeight) / 2,
+          ),
         );
       }
     }
@@ -1587,11 +1587,11 @@
     // Final bounds check to ensure overlay stays within viewport
     left = Math.max(
       margin,
-      Math.min(left, viewportWidth - overlayWidth - margin)
+      Math.min(left, viewportWidth - overlayWidth - margin),
     );
     top = Math.max(
       margin,
-      Math.min(top, viewportHeight - overlayHeight - margin)
+      Math.min(top, viewportHeight - overlayHeight - margin),
     );
 
     overlay.style.left = left + 'px';
@@ -1655,7 +1655,7 @@
             bestDimensions.width +
             'x' +
             bestDimensions.height
-        : ''
+        : '',
     );
 
     // Calculate maximum dimensions considering viewport and margins
@@ -1773,7 +1773,7 @@
       'Display:',
       img.getBoundingClientRect().width +
         'x' +
-        img.getBoundingClientRect().height
+        img.getBoundingClientRect().height,
     );
     img.classList.add('image-enlarger-no-popup');
 
@@ -1840,11 +1840,12 @@
       return;
     }
 
-    const blockingRule = findBlockingRule(trigger) || findBlockingRule(siblingImg);
+    const blockingRule =
+      findBlockingRule(trigger) || findBlockingRule(siblingImg);
     if (blockingRule) {
       console.log(
         'Custom block rule prevented hover (sibling pattern):',
-        blockingRule.name || blockingRule.selector
+        blockingRule.name || blockingRule.selector,
       );
       return;
     }
@@ -1865,7 +1866,7 @@
             siblingImg,
             event.clientX,
             event.clientY,
-            customUrl
+            customUrl,
           );
           return;
         }
@@ -1907,7 +1908,7 @@
       console.log(
         'Custom block rule prevented hover:',
         blockingRule.name || blockingRule.selector,
-        img
+        img,
       );
       return;
     }
@@ -1942,7 +1943,7 @@
           if (href !== bestFromImg) {
             console.log(
               '[Built-in Rule: Parent Anchor Image URL] Using anchor href:',
-              href
+              href,
             );
             showEnlargedImage(img, event.clientX, event.clientY, href);
             return;
@@ -2058,7 +2059,7 @@
           console.log(
             'Custom block rule matched: skipping hover',
             blockingRule.name || blockingRule.selector,
-            target
+            target,
           );
           return;
         }
@@ -2078,7 +2079,7 @@
                   'Custom rule matched:',
                   rule.name,
                   'for element:',
-                  target
+                  target,
                 );
                 handleCustomElementMouseEnter(event);
                 return;
@@ -2109,7 +2110,7 @@
           return;
         }
       },
-      true
+      true,
     );
 
     document.addEventListener(
@@ -2134,7 +2135,7 @@
           hideEnlargedImage();
         }
       },
-      true
+      true,
     );
 
     document.addEventListener(
@@ -2156,7 +2157,7 @@
           handleImageMouseMove(event);
         }
       },
-      true
+      true,
     );
 
     // Hide overlay when scrolling (except in locked zoom mode)
@@ -2166,7 +2167,7 @@
         if (lockedZoomMode) return;
         hideEnlargedImage();
       },
-      true
+      true,
     );
 
     document.addEventListener(
@@ -2192,7 +2193,7 @@
         }
         hideEnlargedImage();
       },
-      true
+      true,
     );
 
     // Suppress browser context menu anywhere while popup is visible (unless in locked zoom mode)
@@ -2226,13 +2227,13 @@
       document.documentElement.addEventListener(
         'contextmenu',
         globalContextmenuHandler,
-        true
+        true,
       );
     if (document.body)
       document.body.addEventListener(
         'contextmenu',
         globalContextmenuHandler,
-        true
+        true,
       );
 
     // Additionally block the right-button mousedown before the browser shows the menu
@@ -2243,7 +2244,7 @@
       // If we're not in locked zoom mode, right-click may be a configured shortcut to toggle zoom
       const zoomBindings = shortcutBindings.zoomFullResolution || [];
       const isZoomMouseShortcut = zoomBindings.some(b =>
-        bindingMatchesMouseEvent(b, event)
+        bindingMatchesMouseEvent(b, event),
       );
 
       if (!lockedZoomMode) {
@@ -2273,13 +2274,13 @@
       document.documentElement.addEventListener(
         'mousedown',
         globalMouseDownSuppressor,
-        true
+        true,
       );
     if (document.body)
       document.body.addEventListener(
         'mousedown',
         globalMouseDownSuppressor,
-        true
+        true,
       );
 
     document.addEventListener(
@@ -2287,7 +2288,7 @@
       function (event) {
         const zoomBindings = shortcutBindings.zoomFullResolution || [];
         const isZoomShortcut = zoomBindings.some(b =>
-          bindingMatchesKeyboardEvent(b, event)
+          bindingMatchesKeyboardEvent(b, event),
         );
         if (isZoomShortcut) {
           if (hoverOverlay && hoverOverlay.style.display === 'block') {
@@ -2306,7 +2307,7 @@
 
         const zoomInBindings = shortcutBindings.zoomIn || [];
         const isZoomInShortcut = zoomInBindings.some(b =>
-          bindingMatchesKeyboardEvent(b, event)
+          bindingMatchesKeyboardEvent(b, event),
         );
         if (isZoomInShortcut) {
           if (
@@ -2325,7 +2326,7 @@
 
         const zoomOutBindings = shortcutBindings.zoomOut || [];
         const isZoomOutShortcut = zoomOutBindings.some(b =>
-          bindingMatchesKeyboardEvent(b, event)
+          bindingMatchesKeyboardEvent(b, event),
         );
         if (isZoomOutShortcut) {
           if (
@@ -2370,7 +2371,7 @@
           hideEnlargedImage();
         }
       },
-      true
+      true,
     );
 
     // Locked zoom mode: drag handlers
@@ -2391,12 +2392,12 @@
 
         const zoomInBindings = shortcutBindings.zoomIn || [];
         const isZoomInShortcut = zoomInBindings.some(b =>
-          bindingMatchesMouseEvent(b, event)
+          bindingMatchesMouseEvent(b, event),
         );
 
         const zoomOutBindings = shortcutBindings.zoomOut || [];
         const isZoomOutShortcut = zoomOutBindings.some(b =>
-          bindingMatchesMouseEvent(b, event)
+          bindingMatchesMouseEvent(b, event),
         );
 
         if (isZoomInShortcut) {
@@ -2417,7 +2418,7 @@
         event.preventDefault();
         event.stopPropagation();
       },
-      { passive: false, capture: true }
+      { passive: false, capture: true },
     );
 
     // Double-click to toggle locked zoom
@@ -2434,7 +2435,7 @@
           event.stopPropagation();
         }
       },
-      true
+      true,
     );
 
     // Hide overlay when the window loses focus (except in locked zoom mode)
@@ -2504,7 +2505,7 @@
       console.log(
         'Custom block rule prevented hover (anchor):',
         blockingRule.name || blockingRule.selector,
-        anchor
+        anchor,
       );
       return;
     }
@@ -2516,7 +2517,7 @@
 
     console.log(
       '[Built-in Rule: Anchor Image Links] Detected anchor link to image:',
-      href
+      href,
     );
 
     currentImg = anchor;
@@ -2582,7 +2583,7 @@
       console.log(
         'Custom block rule prevented hover (background image):',
         blockingRule.name || blockingRule.selector,
-        element
+        element,
       );
       return;
     }
@@ -2594,7 +2595,7 @@
 
     console.log(
       '[Built-in Rule: CSS Background Images] Detected background-image:',
-      bgUrl
+      bgUrl,
     );
 
     currentImg = element;
@@ -2630,7 +2631,7 @@
       console.log(
         'Custom block rule prevented hover (custom element):',
         blockingRule.name || blockingRule.selector,
-        element
+        element,
       );
       return;
     }
@@ -2849,7 +2850,7 @@
                     document.removeEventListener('imagus:userScriptURL', onOk);
                     document.removeEventListener(
                       'imagus:userScriptError',
-                      onErr
+                      onErr,
                     );
                     resolve(String(e.detail || ''));
                   };
@@ -2859,11 +2860,11 @@
                     document.removeEventListener('imagus:userScriptURL', onOk);
                     document.removeEventListener(
                       'imagus:userScriptError',
-                      onErr
+                      onErr,
                     );
                     document.removeEventListener(
                       'imagus:userScriptElement',
-                      onEl
+                      onEl,
                     );
                     resolve('');
                   };
@@ -2873,11 +2874,11 @@
                     document.removeEventListener('imagus:userScriptURL', onOk);
                     document.removeEventListener(
                       'imagus:userScriptError',
-                      onErr
+                      onErr,
                     );
                     document.removeEventListener(
                       'imagus:userScriptElement',
-                      onEl
+                      onEl,
                     );
                     const sel = String(e.detail || '');
                     let derived = '';
@@ -2912,11 +2913,11 @@
                     document.removeEventListener('imagus:userScriptURL', onOk);
                     document.removeEventListener(
                       'imagus:userScriptError',
-                      onErr
+                      onErr,
                     );
                     document.removeEventListener(
                       'imagus:userScriptElement',
-                      onEl
+                      onEl,
                     );
                     try {
                       el.removeAttribute('data-imagus-trigger');
@@ -2952,7 +2953,7 @@
               error,
               elementSummary: summarize(el),
             };
-          })
+          }),
         );
         sendResponse({ ok: true, count: matches.length, results });
       })().catch(e => {

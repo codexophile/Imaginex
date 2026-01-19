@@ -28,13 +28,11 @@ Target Page extraction runs first. If configured and it finds results, the exten
 ### Target Page Extraction
 
 - **URL Template**: A small template that builds the target page URL from the trigger context. Most common placeholders:
-
   - `{href}`: The element `href` or closest link `href`
   - `{src}`: The element `src`/`currentSrc`
     If the template is just `{href}`, the extension will fetch the link destination page.
 
 - **Selectors**: One per line. Each line can be:
-
   - `cssSelector` → pick best image from `srcset`/`src` (auto)
   - `cssSelector@attr` → take a specific attribute (e.g., `img@src`, `a@href`)
   - `cssSelector | srcsetBest` → shorthand to choose the best candidate from `srcset` if present
