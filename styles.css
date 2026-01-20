@@ -243,7 +243,8 @@ div[data-testid*='overlay']:empty {
 }
 
 #imagus-toolbar-copy,
-#imagus-toolbar-copy-src {
+#imagus-toolbar-copy-src,
+#imagus-toolbar-open {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
@@ -258,13 +259,15 @@ div[data-testid*='overlay']:empty {
 }
 
 #imagus-toolbar-copy:hover,
-#imagus-toolbar-copy-src:hover {
+#imagus-toolbar-copy-src:hover,
+#imagus-toolbar-open:hover {
   background: rgba(255, 255, 255, 0.2);
   transform: scale(1.05);
 }
 
 #imagus-toolbar-copy:active,
-#imagus-toolbar-copy-src:active {
+#imagus-toolbar-copy-src:active,
+#imagus-toolbar-open:active {
   transform: scale(0.95);
 }
 

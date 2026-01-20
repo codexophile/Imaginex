@@ -357,8 +357,46 @@
       }
     };
 
+    // Open image in a new tab
+    const openBtn = document.createElement('button');
+    openBtn.id = 'imagus-toolbar-open';
+    openBtn.textContent = 'Open';
+    openBtn.title = 'Open image in a new tab';
+    openBtn.style.cssText = `
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 8px 10px;
+      border-radius: 4px;
+      transition: background 0.2s, transform 0.1s;
+      pointer-events: auto;
+    `;
+    openBtn.onmouseover = () => {
+      openBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+      openBtn.style.transform = 'scale(1.05)';
+    };
+    openBtn.onmouseout = () => {
+      openBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+      openBtn.style.transform = 'scale(1)';
+    };
+    openBtn.onclick = e => {
+      e.stopPropagation();
+      const img = hoverOverlay ? hoverOverlay.querySelector('img') : null;
+      const src = img ? img.currentSrc || img.src : '';
+      if (!src) return;
+
+      try {
+        window.open(src, '_blank', 'noopener,noreferrer');
+      } catch (err) {
+        console.error('Failed to open image:', err);
+      }
+    };
+
     toolbar.appendChild(copyBtn);
     toolbar.appendChild(copySrcBtn);
+    toolbar.appendChild(openBtn);
     document.body.appendChild(toolbar);
     zoomLockToolbar = toolbar;
     return toolbar;
