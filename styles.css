@@ -310,3 +310,30 @@ div[data-testid*='overlay']:empty {
 .imagus-no-animations #imagus-zoom-lock-toolbar {
   animation: none !important;
 }
+/* Image Editor Styles */
+#imagus-editor-modal {
+  animation: imagus-editor-fadeIn 0.3s ease-in-out;
+}
+
+@keyframes imagus-editor-fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+#imagus-editor-canvas {
+  display: block;
+  margin: 0 auto;
+  cursor: default;
+}
+
+#imagus-editor-canvas.crop-mode {
+  cursor: crosshair;
+}
+
+.imagus-no-animations #imagus-editor-modal {
+  animation: none !important;
+}

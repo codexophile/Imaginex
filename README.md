@@ -9,7 +9,8 @@ A Chromium Manifest V3 extension that displays larger images when hovering over 
 - 🎯 **Precise Positioning**: Intelligent positioning that adapts to screen edges
 - 🌙 **Dark Mode Support**: Automatically adapts to system theme preferences
 - ⌨️ **Shortcuts + Locked Zoom**: Assign keyboard/mouse shortcuts to toggle locked zoom, zoom in/out; press Escape to hide
-- 📱 **Responsive**: Works on any screen size
+- �️ **Image Editing**: Crop, rotate, flip, and resize images directly in locked zoom mode with the edit button
+- �📱 **Responsive**: Works on any screen size
 - 🎨 **Custom Rules**: Define rules to find higher-quality images for specific elements (e.g., YouTube thumbnails)
 - 🚫 **Blocking Rules**: Silence matched elements with per-domain custom block rules
 - 🧭 **Target Page Extractors**: No‑code rules that follow links and extract images from the destination page via CSS selectors
@@ -24,8 +25,21 @@ A Chromium Manifest V3 extension that displays larger images when hovering over 
 3. **Display**: After a 300ms delay, the full-size image appears near your cursor
 4. **Positioning**: The overlay intelligently positions itself to stay within the viewport
 5. **Zoom**: Toggle locked zoom mode via shortcut; pan with drag and zoom using shortcuts or mouse wheel
-6. **Hide**: Moving away, scrolling, clicking, or pressing Escape hides the overlay
-7. **Custom Rules**: When an element matches a custom rule: first try Target Page extraction (if configured), otherwise run the rule's Custom JavaScript
+6. **Edit**: When in locked zoom mode, click the edit button (✏️) in the toolbar to open the image editor
+7. **Hide**: Moving away, scrolling, clicking, or pressing Escape hides the overlay
+8. **Custom Rules**: When an element matches a custom rule: first try Target Page extraction (if configured), otherwise run the rule's Custom JavaScript
+
+### Image Editing
+
+When you hover over an image and enter locked zoom mode, you can use the edit button (✏️) to open the image editor. The editor provides:
+
+- **Crop**: Toggle crop mode and drag to select the area you want to keep
+- **Rotate**: Rotate the image 90° clockwise or counter-clockwise
+- **Flip**: Flip the image horizontally or vertically
+- **Reset**: Undo all changes and start over
+- **Download**: Save your edited image as PNG
+
+All edits are applied in real-time on your browser—the original image is never modified on the server.
 
 ## Installation
 

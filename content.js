@@ -394,6 +394,39 @@
       }
     };
 
+    // Edit image button
+    const editBtn = document.createElement('button');
+    editBtn.id = 'imagus-toolbar-edit';
+    editBtn.innerHTML = '✏️';
+    editBtn.title = 'Edit image';
+    editBtn.style.cssText = `
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      transition: background 0.2s, transform 0.1s;
+      pointer-events: auto;
+    `;
+    editBtn.onmouseover = () => {
+      editBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+      editBtn.style.transform = 'scale(1.05)';
+    };
+    editBtn.onmouseout = () => {
+      editBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+      editBtn.style.transform = 'scale(1)';
+    };
+    editBtn.onclick = e => {
+      e.stopPropagation();
+      if (!hoverOverlay) return;
+      const img = hoverOverlay.querySelector('img');
+      if (!img || !img.src) return;
+      openImageEditor(img.src);
+    };
+
+    toolbar.appendChild(editBtn);
     toolbar.appendChild(copyBtn);
     toolbar.appendChild(copySrcBtn);
     toolbar.appendChild(openBtn);
@@ -2014,6 +2047,349 @@
         }
       }
     }, HOVER_DELAY);
+  }
+
+  // Image Editor functionality
+  let editorState = {
+    originalImage: null,
+    canvas: null,
+    ctx: null,
+    currentImage: null,
+    rotation: 0,
+    flipHorizontal: false,
+    flipVertical: false,
+    cropMode: false,
+    cropStart: null,
+    cropEnd: null,
+  };
+
+  function openImageEditor(imageSrc) {
+    // Create editor modal
+    const modal = document.createElement('div');
+    modal.id = 'imagus-editor-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000000;
+      pointer-events: auto;
+    `;
+
+    // Editor container
+    const editorContainer = document.createElement('div');
+    editorContainer.style.cssText = `
+      background: #2a2a2a;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      overflow: auto;
+    `;
+
+    // Canvas for image editing
+    const canvas = document.createElement('canvas');
+    canvas.id = 'imagus-editor-canvas';
+    canvas.style.cssText = `
+      max-width: 100%;
+      max-height: 60vh;
+      border: 2px solid #444;
+      border-radius: 4px;
+      background: #1a1a1a;
+      cursor: crosshair;
+    `;
+
+    // Toolbar
+    const toolbar = document.createElement('div');
+    toolbar.style.cssText = `
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    `;
+
+    // Helper function to create buttons
+    function createToolButton(text, title, onClick) {
+      const btn = document.createElement('button');
+      btn.textContent = text;
+      btn.title = title;
+      btn.style.cssText = `
+        background: #3a3a3a;
+        border: 1px solid #555;
+        color: #fff;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.2s;
+      `;
+      btn.onmouseover = () => {
+        btn.style.background = '#4a4a4a';
+      };
+      btn.onmouseout = () => {
+        btn.style.background = '#3a3a3a';
+      };
+      btn.onclick = onClick;
+      return btn;
+    }
+
+    // Action buttons
+    const cropBtn = createToolButton('Crop', 'Toggle crop mode', () => {
+      editorState.cropMode = !editorState.cropMode;
+      cropBtn.style.background = editorState.cropMode ? '#2a6a2a' : '#3a3a3a';
+      if (editorState.cropMode) {
+        canvas.style.cursor = 'crosshair';
+      } else {
+        canvas.style.cursor = 'default';
+      }
+    });
+
+    const rotateLeftBtn = createToolButton(
+      '↺ Rotate Left',
+      'Rotate 90° counter-clockwise',
+      () => {
+        editorState.rotation = (editorState.rotation - 90) % 360;
+        redrawCanvas();
+      },
+    );
+
+    const rotateRightBtn = createToolButton(
+      'Rotate Right ↻',
+      'Rotate 90° clockwise',
+      () => {
+        editorState.rotation = (editorState.rotation + 90) % 360;
+        redrawCanvas();
+      },
+    );
+
+    const flipHBtn = createToolButton('Flip H', 'Flip horizontally', () => {
+      editorState.flipHorizontal = !editorState.flipHorizontal;
+      flipHBtn.style.opacity = editorState.flipHorizontal ? '0.6' : '1';
+      redrawCanvas();
+    });
+
+    const flipVBtn = createToolButton('Flip V', 'Flip vertically', () => {
+      editorState.flipVertical = !editorState.flipVertical;
+      flipVBtn.style.opacity = editorState.flipVertical ? '0.6' : '1';
+      redrawCanvas();
+    });
+
+    const resetBtn = createToolButton('Reset', 'Reset all changes', () => {
+      editorState.rotation = 0;
+      editorState.flipHorizontal = false;
+      editorState.flipVertical = false;
+      editorState.cropMode = false;
+      editorState.cropStart = null;
+      editorState.cropEnd = null;
+      cropBtn.style.background = '#3a3a3a';
+      flipHBtn.style.opacity = '1';
+      flipVBtn.style.opacity = '1';
+      canvas.style.cursor = 'default';
+      redrawCanvas();
+    });
+
+    // Download and close buttons container
+    const actionContainer = document.createElement('div');
+    actionContainer.style.cssText = `
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    `;
+
+    const downloadBtn = createToolButton(
+      'Download',
+      'Download edited image',
+      async () => {
+        try {
+          const link = document.createElement('a');
+          link.href = canvas.toDataURL('image/png');
+          link.download = 'edited-image.png';
+          link.click();
+        } catch (err) {
+          console.error('Failed to download:', err);
+          alert('Failed to download image');
+        }
+      },
+    );
+
+    const closeBtn = createToolButton('Close', 'Close editor', () => {
+      modal.remove();
+      editorState = {
+        originalImage: null,
+        canvas: null,
+        ctx: null,
+        currentImage: null,
+        rotation: 0,
+        flipHorizontal: false,
+        flipVertical: false,
+        cropMode: false,
+        cropStart: null,
+        cropEnd: null,
+      };
+    });
+
+    // Load image
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      editorState.originalImage = img;
+      editorState.canvas = canvas;
+      editorState.ctx = canvas.getContext('2d');
+
+      // Set canvas size based on image
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+
+      redrawCanvas();
+    };
+    img.onerror = () => {
+      alert('Failed to load image. It might be blocked by CORS policy.');
+      modal.remove();
+    };
+    img.src = imageSrc;
+
+    function redrawCanvas() {
+      if (!editorState.ctx || !editorState.originalImage) return;
+
+      const ctx = editorState.ctx;
+      const img = editorState.originalImage;
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+
+      // Apply transformations
+      ctx.translate(w / 2, h / 2);
+
+      if (editorState.flipHorizontal) {
+        ctx.scale(-1, 1);
+      }
+      if (editorState.flipVertical) {
+        ctx.scale(1, -1);
+      }
+
+      ctx.rotate((editorState.rotation * Math.PI) / 180);
+      ctx.drawImage(img, -w / 2, -h / 2, w, h);
+
+      ctx.restore();
+
+      // Draw crop rectangle if in crop mode
+      if (
+        editorState.cropMode &&
+        editorState.cropStart &&
+        editorState.cropEnd
+      ) {
+        const startX = Math.min(editorState.cropStart.x, editorState.cropEnd.x);
+        const startY = Math.min(editorState.cropStart.y, editorState.cropEnd.y);
+        const endX = Math.max(editorState.cropStart.x, editorState.cropEnd.x);
+        const endY = Math.max(editorState.cropStart.y, editorState.cropEnd.y);
+
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(startX, startY, endX - startX, endY - startY);
+      }
+    }
+
+    // Helper function to convert mouse coordinates to canvas coordinates
+    function getCanvasCoordinates(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+      return { x, y };
+    }
+
+    // Canvas mouse events for crop
+    canvas.addEventListener('mousedown', e => {
+      if (!editorState.cropMode) return;
+      const coords = getCanvasCoordinates(e);
+      editorState.cropStart = coords;
+      editorState.cropEnd = null;
+    });
+
+    canvas.addEventListener('mousemove', e => {
+      if (!editorState.cropMode || !editorState.cropStart) return;
+      const coords = getCanvasCoordinates(e);
+      editorState.cropEnd = coords;
+      redrawCanvas();
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      if (
+        !editorState.cropMode ||
+        !editorState.cropStart ||
+        !editorState.cropEnd
+      )
+        return;
+
+      const startX = Math.min(editorState.cropStart.x, editorState.cropEnd.x);
+      const startY = Math.min(editorState.cropStart.y, editorState.cropEnd.y);
+      const endX = Math.max(editorState.cropStart.x, editorState.cropEnd.x);
+      const endY = Math.max(editorState.cropStart.y, editorState.cropEnd.y);
+
+      const width = endX - startX;
+      const height = endY - startY;
+
+      if (width > 0 && height > 0) {
+        // Create a new image with the cropped content
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(
+          canvas,
+          startX,
+          startY,
+          width,
+          height,
+          0,
+          0,
+          width,
+          height,
+        );
+
+        // Update canvas
+        canvas.width = width;
+        canvas.height = height;
+        editorState.ctx.drawImage(tempCanvas, 0, 0);
+        editorState.cropStart = null;
+        editorState.cropEnd = null;
+        editorState.cropMode = false;
+        cropBtn.style.background = '#3a3a3a';
+        canvas.style.cursor = 'default';
+      }
+    });
+
+    // Assemble toolbar
+    toolbar.appendChild(cropBtn);
+    toolbar.appendChild(rotateLeftBtn);
+    toolbar.appendChild(rotateRightBtn);
+    toolbar.appendChild(flipHBtn);
+    toolbar.appendChild(flipVBtn);
+    toolbar.appendChild(resetBtn);
+
+    // Assemble action container
+    actionContainer.appendChild(downloadBtn);
+    actionContainer.appendChild(closeBtn);
+
+    // Assemble editor
+    editorContainer.appendChild(canvas);
+    editorContainer.appendChild(toolbar);
+    editorContainer.appendChild(actionContainer);
+    modal.appendChild(editorContainer);
+    document.body.appendChild(modal);
   }
 
   // Handle mouse enter on images
