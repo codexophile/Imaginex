@@ -49,7 +49,9 @@
   cursor: pointer;
   font-size: 14px;
   padding: 4px 8px;
-  transition: opacity 0.2s, transform 0.1s;
+  transition:
+    opacity 0.2s,
+    transform 0.1s;
   font-weight: bold;
 }
 
@@ -186,7 +188,9 @@ div[data-testid*='overlay']:empty {
 
 /* Alternative subtle border effect */
 .image-enlarger-no-popup-alt {
-  box-shadow: 0 0 0 2px rgba(255, 165, 0, 0.6), 0 0 8px rgba(255, 165, 0, 0.3) !important;
+  box-shadow:
+    0 0 0 2px rgba(255, 165, 0, 0.6),
+    0 0 8px rgba(255, 165, 0, 0.3) !important;
   transition: box-shadow 0.2s ease-in-out !important;
 }
 
@@ -238,24 +242,29 @@ div[data-testid*='overlay']:empty {
   }
 }
 
-#imagus-toolbar-copy {
+#imagus-toolbar-copy,
+#imagus-toolbar-copy-src {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
   cursor: pointer;
-  font-size: 18px;
+  font-size: 16px;
   padding: 8px 12px;
   border-radius: 4px;
-  transition: background 0.2s, transform 0.1s;
+  transition:
+    background 0.2s,
+    transform 0.1s;
   pointer-events: auto;
 }
 
-#imagus-toolbar-copy:hover {
+#imagus-toolbar-copy:hover,
+#imagus-toolbar-copy-src:hover {
   background: rgba(255, 255, 255, 0.2);
   transform: scale(1.05);
 }
 
-#imagus-toolbar-copy:active {
+#imagus-toolbar-copy:active,
+#imagus-toolbar-copy-src:active {
   transform: scale(0.95);
 }
 

@@ -71,6 +71,7 @@ This covers elements without image tags, sites with low‑quality thumbnails but
 - Toggleable built‑in rules with per‑domain controls.
 - Custom rules via Target Page extractors or `userScript`, with gallery support.
 - Locked zoom mode with precise panning and zooming.
+- Locked zoom toolbar with clipboard actions to copy the rendered image or its URL.
 
 ## Files Modified / Created
 

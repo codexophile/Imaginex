@@ -213,7 +213,7 @@
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     `;
 
-    // Copy to clipboard button
+    // Copy image bitmap to clipboard button
     const copyBtn = document.createElement('button');
     copyBtn.id = 'imagus-toolbar-copy';
     copyBtn.innerHTML = '📋';
@@ -305,7 +305,60 @@
       }
     };
 
+    // Copy image URL to clipboard button
+    const copySrcBtn = document.createElement('button');
+    copySrcBtn.id = 'imagus-toolbar-copy-src';
+    copySrcBtn.textContent = 'URL';
+    copySrcBtn.title = 'Copy image address';
+    copySrcBtn.style.cssText = `
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 8px 10px;
+      border-radius: 4px;
+      transition: background 0.2s, transform 0.1s;
+      pointer-events: auto;
+    `;
+    copySrcBtn.onmouseover = () => {
+      copySrcBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+      copySrcBtn.style.transform = 'scale(1.05)';
+    };
+    copySrcBtn.onmouseout = () => {
+      copySrcBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+      copySrcBtn.style.transform = 'scale(1)';
+    };
+    copySrcBtn.onclick = async e => {
+      e.stopPropagation();
+      const img = hoverOverlay ? hoverOverlay.querySelector('img') : null;
+      const src = img ? img.currentSrc || img.src : '';
+      if (!src) return;
+
+      try {
+        await navigator.clipboard.writeText(src);
+
+        const originalText = copySrcBtn.textContent;
+        copySrcBtn.textContent = '✓';
+        copySrcBtn.style.background = 'rgba(0, 255, 0, 0.3)';
+        setTimeout(() => {
+          copySrcBtn.textContent = originalText;
+          copySrcBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+        }, 1000);
+      } catch (err) {
+        console.error('Failed to copy image URL:', err);
+        const originalText = copySrcBtn.textContent;
+        copySrcBtn.textContent = '✗';
+        copySrcBtn.style.background = 'rgba(255, 0, 0, 0.3)';
+        setTimeout(() => {
+          copySrcBtn.textContent = originalText;
+          copySrcBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+        }, 1000);
+      }
+    };
+
     toolbar.appendChild(copyBtn);
+    toolbar.appendChild(copySrcBtn);
     document.body.appendChild(toolbar);
     zoomLockToolbar = toolbar;
     return toolbar;
