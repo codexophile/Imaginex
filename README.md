@@ -28,6 +28,7 @@ A Chromium Manifest V3 extension that displays larger images when hovering over 
 6. **Edit**: When in locked zoom mode, click the edit button (✏️) in the toolbar to open the image editor
 7. **Hide**: Moving away, scrolling, clicking, or pressing Escape hides the overlay
 8. **Custom Rules**: When an element matches a custom rule: first try Target Page extraction (if configured), otherwise run the rule's Custom JavaScript
+9. **IFrames**: The extension works on images inside iframes—all UI elements appear in the main page for a consistent experience
 
 ### Image Editing
 
@@ -93,6 +94,7 @@ imagus/
 - **Image Caching**: Leverages browser's native image caching
 - **Lazy Positioning**: Only calculates position when needed
 - **Event Delegation**: Single listeners for entire document to reduce overhead
+- **IFrame Support**: Content script runs in all frames to detect images, but UI elements (popup, toolbar, image editor) only appear in the top frame for a seamless experience
 
 ### Browser Support
 

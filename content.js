@@ -1,6 +1,9 @@
 (function () {
   'use strict';
 
+  // Check if this script is running in the top frame
+  const isTopFrame = window === window.top;
+
   let hoverOverlay = null;
   let loadingSpinner = null;
   let currentImg = null;
@@ -146,9 +149,11 @@
 
   function createLockedZoomBorder() {
     if (!lockedZoomBorder) {
-      lockedZoomBorder = document.createElement('div');
-      lockedZoomBorder.id = 'imagus-locked-zoom-border';
-      document.body.appendChild(lockedZoomBorder);
+      if (isTopFrame) {
+        lockedZoomBorder = document.createElement('div');
+        lockedZoomBorder.id = 'imagus-locked-zoom-border';
+        document.body.appendChild(lockedZoomBorder);
+      }
     }
     return lockedZoomBorder;
   }
@@ -173,7 +178,7 @@
   // Create a pointer-events barrier to block interactions with background elements
   function createLockedZoomBarrier() {
     let barrier = document.getElementById('imagus-locked-zoom-barrier');
-    if (!barrier) {
+    if (!barrier && isTopFrame) {
       barrier = document.createElement('div');
       barrier.id = 'imagus-locked-zoom-barrier';
       document.body.appendChild(barrier);
@@ -194,6 +199,9 @@
   }
 
   function createZoomLockToolbar() {
+    // Only create UI elements in the top frame
+    if (!isTopFrame) return null;
+
     if (zoomLockToolbar) return zoomLockToolbar;
 
     const toolbar = document.createElement('div');
@@ -874,6 +882,9 @@
 
   // Create the hover overlay element
   function createOverlay() {
+    // Only create UI elements in the top frame
+    if (!isTopFrame) return null;
+
     const overlay = document.createElement('div');
     overlay.id = 'image-enlarger-overlay';
     overlay.style.cssText = `
@@ -2064,6 +2075,9 @@
   };
 
   function openImageEditor(imageSrc) {
+    // Only open image editor in the top frame
+    if (!isTopFrame) return;
+
     // Create editor modal
     const modal = document.createElement('div');
     modal.id = 'imagus-editor-modal';
