@@ -2195,13 +2195,13 @@
       flipHBtn.style.opacity = '1';
       flipVBtn.style.opacity = '1';
       canvas.style.cursor = 'default';
-      
+
       // Restore original canvas size
       if (editorState.originalImage) {
         canvas.width = editorState.originalImage.naturalWidth;
         canvas.height = editorState.originalImage.naturalHeight;
       }
-      
+
       redrawCanvas();
     });
 
