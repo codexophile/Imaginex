@@ -1018,13 +1018,15 @@
   function setOverlayLoading(isLoading) {
     if (!loadingSpinner) {
       if (!isLoading) return;
+      if (!isTopFrame) return; // Don't create spinner in iframes
       loadingSpinner = document.createElement('div');
       loadingSpinner.id = 'image-enlarger-floating-spinner';
       loadingSpinner.innerHTML =
         '<div class="image-enlarger-spinner-ring"></div>';
       document.body.appendChild(loadingSpinner);
     }
-    loadingSpinner.style.display = isLoading ? 'flex' : 'none';
+    if (loadingSpinner)
+      loadingSpinner.style.display = isLoading ? 'flex' : 'none';
   }
 
   function positionSpinner(mouseX, mouseY) {
@@ -1772,6 +1774,9 @@
     if (!hoverOverlay) {
       hoverOverlay = createOverlay();
     }
+
+    // If we're in an iframe, we can't display the UI
+    if (!hoverOverlay) return;
 
     lastHoverMouseX = mouseX;
     lastHoverMouseY = mouseY;
