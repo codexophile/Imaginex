@@ -371,7 +371,7 @@ export async function updateSettings(patch) {
 
     if (k === 'builtInRules' && Array.isArray(v)) {
       const prevMap = new Map(
-        (inMemory.builtInRules || []).map(r => [r.id, r])
+        (inMemory.builtInRules || []).map(r => [r.id, r]),
       );
       const nextMap = new Map(v.map(r => [r.id, r]));
       let localChange = false;
@@ -488,10 +488,10 @@ export async function mergeCloudSettings(cloudSettings) {
 
   // Merge customRules per id with timestamps
   const localCustomMap = Object.fromEntries(
-    (local.customRules || []).map(rule => [rule.id, rule])
+    (local.customRules || []).map(rule => [rule.id, rule]),
   );
   const cloudCustomMap = Object.fromEntries(
-    (cloud.customRules || []).map(rule => [rule.id, rule])
+    (cloud.customRules || []).map(rule => [rule.id, rule]),
   );
   const { result: mergedCustomMap, meta: mergedCustomMeta } = mergeKeyed({
     localMap: localCustomMap,
@@ -505,10 +505,10 @@ export async function mergeCloudSettings(cloudSettings) {
 
   // Merge builtInRules per id with timestamps
   const localBuiltMap = Object.fromEntries(
-    (local.builtInRules || []).map(rule => [rule.id, rule])
+    (local.builtInRules || []).map(rule => [rule.id, rule]),
   );
   const cloudBuiltMap = Object.fromEntries(
-    (cloud.builtInRules || []).map(rule => [rule.id, rule])
+    (cloud.builtInRules || []).map(rule => [rule.id, rule]),
   );
   const { result: mergedBuiltMap, meta: mergedBuiltMeta } = mergeKeyed({
     localMap: localBuiltMap,
