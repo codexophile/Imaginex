@@ -162,6 +162,7 @@ const META_DEFAULTS = Object.freeze({
 });
 
 const INTERNAL_KEY = '__settings_v1';
+const DELETION_MARKER = 0; // Mark deleted items in meta so they don't get re-added from cloud
 let inMemory = null;
 let subscribers = new Set();
 let loadPromise = null;
@@ -175,6 +176,8 @@ function nowTs() {
 }
 
 function pickNewer({ localValue, cloudValue, localTs, cloudTs }) {
+  // If deleted locally (marker = 0), keep it deleted regardless of cloud
+  if (localTs === DELETION_MARKER) return undefined;
   if (cloudTs && (!localTs || cloudTs > localTs)) return cloudValue;
   if (localTs && (!cloudTs || localTs > cloudTs)) return localValue;
   if (typeof localValue === 'undefined' && typeof cloudValue !== 'undefined')
@@ -328,8 +331,9 @@ export async function updateSettings(patch) {
           meta.apiKeys[key] = nowTs();
           localChange = true;
         }
-        if (!next.hasOwnProperty(key)) {
-          delete meta.apiKeys[key];
+        if (!next.hasOwnProperty(key) && prev.hasOwnProperty(key)) {
+          // Mark deletions so cloud won't re-add
+          meta.apiKeys[key] = DELETION_MARKER;
         }
       });
       if (localChange) {
@@ -351,10 +355,10 @@ export async function updateSettings(patch) {
           localChange = true;
         }
       }
-      // Detect removals
+      // Detect removals - mark as deleted so cloud sync won't re-add them
       for (const id of prevMap.keys()) {
         if (!nextMap.has(id)) {
-          delete meta.customRules[id];
+          meta.customRules[id] = DELETION_MARKER;
           localChange = true;
         }
       }
@@ -380,7 +384,7 @@ export async function updateSettings(patch) {
       }
       for (const id of prevMap.keys()) {
         if (!nextMap.has(id)) {
-          delete meta.builtInRules[id];
+          meta.builtInRules[id] = DELETION_MARKER;
           localChange = true;
         }
       }
