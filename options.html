@@ -33,6 +33,11 @@
       max-width: 760px;
     }
 
+    /* Full width for custom rules section */
+    main:has(#section-customRules.active) {
+      max-width: 1400px;
+    }
+
     section {
       background: #fff;
       border-radius: 10px;
@@ -225,6 +230,77 @@
 
     .custom-rules-list {
       margin: 16px 0;
+    }
+
+    .rules-controls {
+      background: rgba(75, 108, 183, 0.06);
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(75, 108, 183, 0.15);
+    }
+
+    .rules-search-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .rules-search-bar input[type="text"] {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      font-size: 14px;
+      background: #fff;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .rules-search-bar input[type="text"] {
+        background: #2a2a2e;
+        border-color: rgba(255, 255, 255, 0.2);
+        color: #fff;
+      }
+    }
+
+    .rules-search-bar input[type="text"]::placeholder {
+      opacity: 0.5;
+    }
+
+    .rules-toolbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .rules-toolbar label {
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0.85;
+    }
+
+    .rules-toolbar select {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      background: #fff;
+      font-size: 13px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .rules-toolbar select {
+        background: #2a2a2e;
+        border-color: rgba(255, 255, 255, 0.2);
+        color: #fff;
+      }
+    }
+
+    .rules-stats {
+      font-size: 12px;
+      opacity: 0.7;
+      margin-left: auto;
     }
 
     .rule-item {
@@ -657,6 +733,24 @@
               For example, find maxresdefault thumbnails for YouTube videos, high-res product images, or return a set of
               URLs to browse as a gallery.
             </p>
+
+            <div class="rules-controls">
+              <div class="rules-search-bar">
+                <input type="text" id="rulesSearchInput" placeholder="Search rules by name, selector, or domain..." />
+                <button id="rulesClearSearch" class="secondary">Clear</button>
+              </div>
+              <div class="rules-toolbar">
+                <label for="rulesSortBy">Sort by:</label>
+                <select id="rulesSortBy">
+                  <option value="default">Default Order</option>
+                  <option value="name-asc">Name (A-Z)</option>
+                  <option value="name-desc">Name (Z-A)</option>
+                  <option value="enabled-first">Enabled First</option>
+                  <option value="disabled-first">Disabled First</option>
+                </select>
+                <span class="rules-stats" id="rulesStats"></span>
+              </div>
+            </div>
 
             <div class="custom-rules-list" id="customRulesList">
               <!-- Rules will be dynamically inserted here -->

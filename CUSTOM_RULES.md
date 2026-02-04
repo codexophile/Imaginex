@@ -9,6 +9,36 @@ Custom rules let you define how the extension finds higher‑quality images for 
 
 Both approaches can also return multiple URLs to enable gallery navigation.
 
+## Managing Custom Rules
+
+The Options page provides powerful tools to manage your custom rules, especially useful as your rule collection grows:
+
+### Search & Filter
+
+- Use the **search box** at the top to quickly find rules by name, selector, or domain
+- Real-time filtering shows only matching rules
+- Click **Clear** to reset the search
+
+### Sorting Options
+
+Sort your rules by:
+
+- **Default Order**: The order you created them
+- **Name (A-Z)** / **Name (Z-A)**: Alphabetical sorting
+- **Enabled First** / **Disabled First**: Group by enabled status
+
+### Layout
+
+The Custom Rules section automatically expands to full-width (up to 1400px) to provide more space for viewing rule details, making it easier to work with complex rules.
+
+### Statistics
+
+At the top right, you'll see a summary showing:
+
+- Total number of rules
+- Number of enabled rules
+- Filtered count when searching
+
 ## How Custom Rules Work
 
 Each rule has:

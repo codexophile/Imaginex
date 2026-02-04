@@ -48,6 +48,8 @@ let saveTimer = null;
 const AUTO_SAVE_DEBOUNCE = 400;
 let editingRuleId = null;
 let activeCapture = null;
+let rulesSearchQuery = '';
+let rulesSortBy = 'default';
 
 function $(id) {
   return document.getElementById(id);
@@ -349,6 +351,10 @@ async function init() {
 
   // Custom rules elements
   els.customRulesList = $('customRulesList');
+  els.rulesSearchInput = $('rulesSearchInput');
+  els.rulesClearSearch = $('rulesClearSearch');
+  els.rulesSortBy = $('rulesSortBy');
+  els.rulesStats = $('rulesStats');
   els.addRuleBtn = $('addRuleBtn');
   els.ruleForm = $('ruleForm');
   els.formTitle = $('formTitle');
@@ -448,6 +454,25 @@ function wireEvents() {
   // Custom rules event handlers
   if (els.addRuleBtn) {
     els.addRuleBtn.addEventListener('click', handleAddRule);
+  }
+  if (els.rulesSearchInput) {
+    els.rulesSearchInput.addEventListener('input', e => {
+      rulesSearchQuery = e.target.value.toLowerCase();
+      renderCustomRules(initial.customRules || []);
+    });
+  }
+  if (els.rulesClearSearch) {
+    els.rulesClearSearch.addEventListener('click', () => {
+      rulesSearchQuery = '';
+      els.rulesSearchInput.value = '';
+      renderCustomRules(initial.customRules || []);
+    });
+  }
+  if (els.rulesSortBy) {
+    els.rulesSortBy.addEventListener('change', e => {
+      rulesSortBy = e.target.value;
+      renderCustomRules(initial.customRules || []);
+    });
   }
   if (els.saveRuleBtn) {
     els.saveRuleBtn.addEventListener('click', handleSaveRule);
@@ -890,10 +915,64 @@ function renderCustomRules(rules) {
   if (!rules || rules.length === 0) {
     container.innerHTML =
       '<p style="opacity: 0.6; font-size: 13px;">No custom rules defined yet. Click "Add New Rule" to create one.</p>';
+    if (els.rulesStats) els.rulesStats.textContent = '';
     return;
   }
 
-  container.innerHTML = rules
+  // Filter rules based on search query
+  let filteredRules = rules;
+  if (rulesSearchQuery.trim()) {
+    filteredRules = rules.filter(rule => {
+      const searchText = [
+        rule.name || '',
+        rule.selector || '',
+        ...(rule.allowDomains || []),
+        ...(rule.excludeDomains || []),
+      ]
+        .join(' ')
+        .toLowerCase();
+      return searchText.includes(rulesSearchQuery);
+    });
+  }
+
+  // Sort rules
+  let sortedRules = [...filteredRules];
+  switch (rulesSortBy) {
+    case 'name-asc':
+      sortedRules.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      break;
+    case 'name-desc':
+      sortedRules.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+      break;
+    case 'enabled-first':
+      sortedRules.sort((a, b) => (b.enabled ? 1 : 0) - (a.enabled ? 1 : 0));
+      break;
+    case 'disabled-first':
+      sortedRules.sort((a, b) => (a.enabled ? 1 : 0) - (b.enabled ? 1 : 0));
+      break;
+    default:
+      // Keep default order
+      break;
+  }
+
+  // Update stats
+  if (els.rulesStats) {
+    const enabledCount = filteredRules.filter(r => r.enabled).length;
+    const totalCount = filteredRules.length;
+    const statsText = rulesSearchQuery.trim()
+      ? `Showing ${totalCount} of ${rules.length} rules (${enabledCount} enabled)`
+      : `${totalCount} rules (${enabledCount} enabled)`;
+    els.rulesStats.textContent = statsText;
+  }
+
+  // Show message if no results after filtering
+  if (sortedRules.length === 0) {
+    container.innerHTML =
+      '<p style="opacity: 0.6; font-size: 13px;">No rules match your search. Try a different query.</p>';
+    return;
+  }
+
+  container.innerHTML = sortedRules
     .map(rule => {
       const domainInfo = [];
       if (Array.isArray(rule.allowDomains) && rule.allowDomains.length > 0) {
