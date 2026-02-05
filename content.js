@@ -3316,7 +3316,15 @@
 
   // Message handler for rule testing from options page
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (!msg || msg.type !== 'imagus:testRule') return;
+    if (!msg) return;
+    
+    // Handle ping requests to check if content script is loaded
+    if (msg.type === 'imagus:ping') {
+      sendResponse({ ok: true });
+      return;
+    }
+    
+    if (msg.type !== 'imagus:testRule') return;
     try {
       const rule = msg.rule || {};
       const selector = rule.selector;

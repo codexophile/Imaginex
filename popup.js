@@ -77,6 +77,36 @@ function formatDomains(allowedDomains, excludedDomains) {
   return parts.length > 0 ? parts.join(' | ') : 'All domains';
 }
 
+// Check if content script is loaded and responsive
+async function ensureContentScriptLoaded(tabId) {
+  try {
+    // Try to ping the content script
+    await chrome.tabs.sendMessage(tabId, { type: 'imagus:ping' });
+    return true; // Content script is already loaded
+  } catch (e) {
+    // Content script not loaded, inject it
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: ['content.js']
+      });
+      
+      // Also inject the CSS
+      await chrome.scripting.insertCSS({
+        target: { tabId: tabId },
+        files: ['styles.css']
+      });
+      
+      // Give it a moment to initialize
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return true;
+    } catch (injectionError) {
+      console.error('Failed to inject content script:', injectionError);
+      return false;
+    }
+  }
+}
+
 async function checkRuleMatches(tab, rule) {
   try {
     const res = await chrome.tabs.sendMessage(tab.id, {
@@ -181,6 +211,15 @@ async function init() {
     }
 
     setOutput('<div class="no-rules">Checking rules...</div>');
+
+    // Ensure content script is loaded
+    const contentScriptReady = await ensureContentScriptLoaded(tab.id);
+    if (!contentScriptReady) {
+      setOutput(
+        '<div class="no-rules">Unable to load content script on this page.<br>Try refreshing the page.</div>',
+      );
+      return;
+    }
 
     // Check each rule for matches
     const applicableRules = [];
