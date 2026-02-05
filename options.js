@@ -1444,11 +1444,15 @@ function handlePendingEditRule(ruleId, attempt = 0) {
   // Ensure settings and elements are ready.
   // We only require initial settings and the form element.
   if (!initial || !els.ruleForm) {
-    if (attempt < 40) { // Try for ~6 seconds
+    if (attempt < 40) {
+      // Try for ~6 seconds
       setTimeout(() => handlePendingEditRule(ruleId, attempt + 1), 150);
     } else {
-       console.error(`Imagus: Timeout waiting for options to initialize for rule ${ruleId}`);
-       if (els.status) els.status.textContent = 'Error: Options initialization timed out';
+      console.error(
+        `Imagus: Timeout waiting for options to initialize for rule ${ruleId}`,
+      );
+      if (els.status)
+        els.status.textContent = 'Error: Options initialization timed out';
     }
     return;
   }
@@ -1468,20 +1472,21 @@ function handlePendingEditRule(ruleId, attempt = 0) {
     // Also highlight the name field
     if (els.ruleName) els.ruleName.focus();
   } else {
-      // If display is still none/block-check failed, maybe rule wasn't found?
-      const rules = initial.customRules || [];
-      const found = rules.find(r => r.id === ruleId);
-      
-      if (!found && els.status) {
-        els.status.textContent = `Rule not found in list: ${ruleId}`;
-        console.warn(`Imagus: Rule ${ruleId} not found in ${rules.length} rules`);
-      }
+    // If display is still none/block-check failed, maybe rule wasn't found?
+    const rules = initial.customRules || [];
+    const found = rules.find(r => r.id === ruleId);
+
+    if (!found && els.status) {
+      els.status.textContent = `Rule not found in list: ${ruleId}`;
+      console.warn(`Imagus: Rule ${ruleId} not found in ${rules.length} rules`);
+    }
   }
 
   // Clear status after a bit
   if (els.status) {
     setTimeout(() => {
-        if (els.status.textContent.startsWith('Opening')) els.status.textContent = '';
+      if (els.status.textContent.startsWith('Opening'))
+        els.status.textContent = '';
     }, 2000);
   }
 }
