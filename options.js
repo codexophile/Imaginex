@@ -1097,12 +1097,31 @@ function handleAddRule() {
   els.ruleName.focus();
 }
 
+// Helper to switch tabs programmatically
+function switchTab(tabName) {
+  // Sidebar items
+  document.querySelectorAll('.sidebar-item').forEach(li => {
+    li.classList.remove('active');
+    if (li.id === tabName) li.classList.add('active');
+  });
+
+  // Sections
+  const sectionId = 'section-' + tabName;
+  document.querySelectorAll('.section-content').forEach(section => {
+    section.classList.remove('active');
+    if (section.id === sectionId) section.classList.add('active');
+  });
+}
+
 function handleEditRule(e) {
   const ruleId = e.target.dataset.ruleId;
   openRuleEditor(ruleId);
 }
 
 function openRuleEditor(ruleId) {
+  // Ensure we switch to the "Custom Rules" tab first
+  switchTab('customRules');
+
   const rules = initial.customRules || [];
   const rule = rules.find(r => r.id === ruleId);
   if (!rule) return;
@@ -1422,10 +1441,14 @@ async function checkPendingEdit() {
 }
 
 function handlePendingEditRule(ruleId, attempt = 0) {
-  // Ensure settings and elements are ready
-  if (!initial || !els.ruleForm || document.readyState !== 'complete') {
-    if (attempt < 20) {
+  // Ensure settings and elements are ready.
+  // We only require initial settings and the form element.
+  if (!initial || !els.ruleForm) {
+    if (attempt < 40) { // Try for ~6 seconds
       setTimeout(() => handlePendingEditRule(ruleId, attempt + 1), 150);
+    } else {
+       console.error(`Imagus: Timeout waiting for options to initialize for rule ${ruleId}`);
+       if (els.status) els.status.textContent = 'Error: Options initialization timed out';
     }
     return;
   }
@@ -1434,20 +1457,32 @@ function handlePendingEditRule(ruleId, attempt = 0) {
   if (els.status) {
     els.status.textContent = `Opening rule: ${ruleId}`;
   }
+  console.log(`Imagus: Opening edit for rule ${ruleId}`);
 
+  // Actually attempt to open it
   openRuleEditor(ruleId);
 
-  if (els.ruleForm) {
+  // If the form became visible, scroll to it
+  if (els.ruleForm.style.display !== 'none') {
     els.ruleForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Also highlight the name field
+    if (els.ruleName) els.ruleName.focus();
+  } else {
+      // If display is still none/block-check failed, maybe rule wasn't found?
+      const rules = initial.customRules || [];
+      const found = rules.find(r => r.id === ruleId);
+      
+      if (!found && els.status) {
+        els.status.textContent = `Rule not found in list: ${ruleId}`;
+        console.warn(`Imagus: Rule ${ruleId} not found in ${rules.length} rules`);
+      }
   }
 
-  // If rule was not found, inform the user
-  const rules = initial.customRules || [];
-  if (!rules.find(r => r.id === ruleId) && els.status) {
-    els.status.textContent = `Rule not found: ${ruleId}`;
-    setTimeout(() => (els.status.textContent = ''), 1800);
-  } else if (els.status) {
-    setTimeout(() => (els.status.textContent = ''), 1200);
+  // Clear status after a bit
+  if (els.status) {
+    setTimeout(() => {
+        if (els.status.textContent.startsWith('Opening')) els.status.textContent = '';
+    }, 2000);
   }
 }
 
