@@ -131,12 +131,6 @@ async function checkRuleMatches(tab, rule) {
 }
 
 function createRuleElement(rule, matchCount, pageUrl) {
-  const matchesDomainFilter = matchesDomain(
-    pageUrl,
-    rule.allowedDomains,
-    rule.excludedDomains,
-  );
-
   const div = document.createElement('div');
   div.className = `rule-item${rule.enabled ? '' : ' disabled'}`;
 
@@ -180,17 +174,8 @@ function createRuleElement(rule, matchCount, pageUrl) {
   matchDiv.textContent = `Matches: ${matchCount} element${matchCount !== 1 ? 's' : ''}`;
   div.appendChild(matchDiv);
 
-  // Domain filter status
-  if (!matchesDomainFilter) {
-    const domainDiv = document.createElement('div');
-    domainDiv.className = 'rule-details';
-    domainDiv.style.color = '#e74c3c';
-    domainDiv.textContent = '⚠️ Domain filter excludes this page';
-    div.appendChild(domainDiv);
-  }
-
   // Domains
-  const domains = formatDomains(rule.allowedDomains, rule.excludedDomains);
+  const domains = formatDomains(rule.allowDomains, rule.excludeDomains);
   const domainDiv = document.createElement('div');
   domainDiv.className = 'rule-details';
   domainDiv.textContent = `Domains: ${domains}`;
@@ -335,15 +320,21 @@ async function init() {
     for (const rule of rules) {
       if (!rule || !rule.selector) continue;
 
-      const matchCount = await checkRuleMatches(tab, rule);
+      // First check if domain filter allows this page
       const matchesDomainFilter = matchesDomain(
         tab.url,
-        rule.allowedDomains,
-        rule.excludedDomains,
+        rule.allowDomains,
+        rule.excludeDomains,
       );
 
-      // Include rule if it has matches OR if it would match but domain filter excludes it
-      if (matchCount > 0 || !matchesDomainFilter) {
+      // Skip rules that are domain-filtered out
+      if (!matchesDomainFilter) continue;
+
+      // Check for matches on the page
+      const matchCount = await checkRuleMatches(tab, rule);
+
+      // Include rule if it has matches on this page
+      if (matchCount > 0) {
         applicableRules.push({ rule, matchCount });
       }
     }
