@@ -88,15 +88,15 @@ async function ensureContentScriptLoaded(tabId) {
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tabId },
-        files: ['content.js']
+        files: ['content.js'],
       });
-      
+
       // Also inject the CSS
       await chrome.scripting.insertCSS({
         target: { tabId: tabId },
-        files: ['styles.css']
+        files: ['styles.css'],
       });
-      
+
       // Give it a moment to initialize
       await new Promise(resolve => setTimeout(resolve, 100));
       return true;
