@@ -55,16 +55,52 @@
       margin-top: 8px;
     }
 
-    pre {
+    #output {
       white-space: pre-wrap;
       word-break: break-word;
-      background: rgba(0, 0, 0, .06);
-      padding: 8px;
-      border-radius: 6px;
-      font-size: 11px;
+      font-size: 12px;
       margin: 10px 0 0;
-      max-height: 220px;
+      max-height: 400px;
       overflow: auto;
+    }
+
+    .rule-item {
+      background: rgba(0, 0, 0, .06);
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      border-left: 3px solid #4b6cb7;
+    }
+
+    .rule-item.disabled {
+      opacity: 0.65;
+      border-left-color: #999;
+    }
+
+    .rule-name {
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .rule-details {
+      font-size: 11px;
+      margin: 3px 0;
+      opacity: 0.8;
+    }
+
+    .rule-selector {
+      font-family: 'Consolas', 'Monaco', monospace;
+      background: rgba(0, 0, 0, 0.1);
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 10px;
+    }
+
+    .no-rules {
+      text-align: center;
+      padding: 20px;
+      opacity: 0.6;
     }
 
     .muted {
@@ -75,16 +111,12 @@
 </head>
 
 <body>
-  <h1>Imaginex – Rule Tester</h1>
-  <div class="muted">Open this popup on the page you want to test (e.g., YouTube), then run the test.</div>
+  <h1>Applicable Rules for This Page</h1>
+  <div class="muted">Shows which rules match elements on the current page.</div>
 
-  <label for="ruleSelect">Rule</label>
-  <select id="ruleSelect"></select>
-
-  <button id="testBtn">Test on This Page</button>
   <button id="openOptionsBtn" class="secondary">Open Options</button>
 
-  <pre id="output">Ready.</pre>
+  <div id="output">Loading...</div>
 
   <script type="module" src="popup.js"></script>
 </body>
