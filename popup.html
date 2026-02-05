@@ -77,12 +77,6 @@
       border-left-color: #999;
     }
 
-    .rule-name {
-      font-weight: 700;
-      font-size: 13px;
-      margin-bottom: 4px;
-    }
-
     .rule-details {
       font-size: 11px;
       margin: 3px 0;
@@ -101,6 +95,42 @@
       text-align: center;
       padding: 20px;
       opacity: 0.6;
+    }
+
+    .rule-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 4px;
+      gap: 8px;
+    }
+
+    .rule-name {
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 4px;
+      flex: 1;
+      min-width: 0;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .rule-edit-btn {
+      background: #4b6cb7;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      flex-shrink: 0;
+      margin: 0;
+      width: auto;
+    }
+
+    .rule-edit-btn:hover {
+      background: #3a5a9a;
     }
 
     .muted {

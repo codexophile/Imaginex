@@ -1375,6 +1375,23 @@ window.addEventListener('wheel', handleCaptureWheel, {
   passive: false,
 });
 
+// Listen for messages from popup to edit specific rules
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg && msg.type === 'imagus:editRule' && msg.ruleId) {
+    // Wait a moment for the page to fully initialize
+    setTimeout(() => {
+      const btn = document.querySelector(`[data-rule-id="${msg.ruleId}"]`);
+      if (btn && btn.classList.contains('edit-rule-btn')) {
+        btn.click();
+        // Scroll the rule form into view
+        if (els.ruleForm) {
+          els.ruleForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }, 100);
+  }
+});
+
 init().catch(err => {
   console.error('Failed to init options', err);
   if (els.status) els.status.textContent = 'Error loading settings';

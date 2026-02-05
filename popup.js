@@ -134,6 +134,10 @@ function createRuleElement(rule, matchCount, pageUrl) {
   const div = document.createElement('div');
   div.className = `rule-item${rule.enabled ? '' : ' disabled'}`;
 
+  // Header with name and edit button
+  const header = document.createElement('div');
+  header.className = 'rule-header';
+
   const name = document.createElement('div');
   name.className = 'rule-name';
   name.textContent = rule.name || rule.id || 'Unnamed Rule';
@@ -146,7 +150,15 @@ function createRuleElement(rule, matchCount, pageUrl) {
     name.textContent += ' [Blocking]';
   }
 
-  div.appendChild(name);
+  const editBtn = document.createElement('button');
+  editBtn.className = 'rule-edit-btn';
+  editBtn.textContent = 'Edit';
+  editBtn.dataset.ruleId = rule.id;
+  editBtn.addEventListener('click', handleEditRule);
+
+  header.appendChild(name);
+  header.appendChild(editBtn);
+  div.appendChild(header);
 
   // Selector
   if (rule.selector) {
@@ -179,6 +191,23 @@ function createRuleElement(rule, matchCount, pageUrl) {
   div.appendChild(domainDiv);
 
   return div;
+}
+
+// Handle edit button clicks
+function handleEditRule(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const ruleId = e.target.dataset.ruleId;
+  if (ruleId) {
+    // Open options page with rule ID parameter
+    chrome.runtime.openOptionsPage(() => {
+      // Send message to options page to open the specific rule
+      chrome.runtime.sendMessage({
+        type: 'imagus:editRule',
+        ruleId: ruleId,
+      });
+    });
+  }
 }
 
 async function init() {
