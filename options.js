@@ -393,6 +393,10 @@ async function init() {
         'Cloud sync not configured (set oauth2.client_id).';
   }
   // OAuth flow will only trigger when user clicks Sync button
+
+  // Check for pending rule edit from popup (via storage or hash)
+  await checkPendingEdit();
+  checkHashEdit();
 }
 
 function bindValues(s) {
@@ -1095,6 +1099,10 @@ function handleAddRule() {
 
 function handleEditRule(e) {
   const ruleId = e.target.dataset.ruleId;
+  openRuleEditor(ruleId);
+}
+
+function openRuleEditor(ruleId) {
   const rules = initial.customRules || [];
   const rule = rules.find(r => r.id === ruleId);
   if (!rule) return;
@@ -1378,19 +1386,88 @@ window.addEventListener('wheel', handleCaptureWheel, {
 // Listen for messages from popup to edit specific rules
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'imagus:editRule' && msg.ruleId) {
-    // Wait a moment for the page to fully initialize
-    setTimeout(() => {
-      const btn = document.querySelector(`[data-rule-id="${msg.ruleId}"]`);
-      if (btn && btn.classList.contains('edit-rule-btn')) {
-        btn.click();
-        // Scroll the rule form into view
-        if (els.ruleForm) {
-          els.ruleForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }
-    }, 100);
+    if (els.status) {
+      els.status.textContent = `Request to open rule: ${msg.ruleId}`;
+    }
+    handlePendingEditRule(msg.ruleId);
   }
 });
+
+async function checkPendingEdit() {
+  try {
+    const stored = await new Promise(resolve => {
+      chrome.storage.local.get('pendingEditRuleId', items => {
+        if (chrome.runtime.lastError) {
+          console.warn('Error reading pending edit:', chrome.runtime.lastError);
+          resolve({});
+          return;
+        }
+        resolve(items || {});
+      });
+    });
+
+    if (stored && stored.pendingEditRuleId) {
+      // Clear it before opening to avoid loops
+      await new Promise(resolve => {
+        chrome.storage.local.remove('pendingEditRuleId', () => resolve());
+      });
+      if (els.status) {
+        els.status.textContent = `Pending edit (storage): ${stored.pendingEditRuleId}`;
+      }
+      handlePendingEditRule(stored.pendingEditRuleId);
+    }
+  } catch (e) {
+    console.warn('Error checking pending edit:', e);
+  }
+}
+
+function handlePendingEditRule(ruleId, attempt = 0) {
+  // Ensure settings and elements are ready
+  if (!initial || !els.ruleForm || document.readyState !== 'complete') {
+    if (attempt < 20) {
+      setTimeout(() => handlePendingEditRule(ruleId, attempt + 1), 150);
+    }
+    return;
+  }
+
+  // Provide user feedback
+  if (els.status) {
+    els.status.textContent = `Opening rule: ${ruleId}`;
+  }
+
+  openRuleEditor(ruleId);
+
+  if (els.ruleForm) {
+    els.ruleForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // If rule was not found, inform the user
+  const rules = initial.customRules || [];
+  if (!rules.find(r => r.id === ruleId) && els.status) {
+    els.status.textContent = `Rule not found: ${ruleId}`;
+    setTimeout(() => (els.status.textContent = ''), 1800);
+  } else if (els.status) {
+    setTimeout(() => (els.status.textContent = ''), 1200);
+  }
+}
+
+// Check for pending edits when the page becomes visible (handles pre-opened tabs)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    checkPendingEdit();
+  }
+});
+window.addEventListener('focus', checkPendingEdit);
+window.addEventListener('hashchange', checkHashEdit);
+
+function checkHashEdit() {
+  const hash = window.location.hash || '';
+  const match = hash.match(/#edit=([^&]+)/);
+  if (match && match[1]) {
+    const ruleId = decodeURIComponent(match[1]);
+    handlePendingEditRule(ruleId);
+  }
+}
 
 init().catch(err => {
   console.error('Failed to init options', err);

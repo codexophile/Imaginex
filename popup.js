@@ -4,8 +4,14 @@ function $(id) {
   return document.getElementById(id);
 }
 
-function setOutput(html) {
-  $('output').innerHTML = html;
+function setOutput(content) {
+  const out = $('output');
+  out.innerHTML = '';
+  if (typeof content === 'string') {
+    out.innerHTML = content;
+  } else if (content instanceof Node) {
+    out.appendChild(content);
+  }
 }
 
 async function getActiveTab() {
@@ -194,19 +200,92 @@ function createRuleElement(rule, matchCount, pageUrl) {
 }
 
 // Handle edit button clicks
-function handleEditRule(e) {
+async function handleEditRule(e) {
   e.preventDefault();
   e.stopPropagation();
   const ruleId = e.target.dataset.ruleId;
-  if (ruleId) {
-    // Open options page with rule ID parameter
-    chrome.runtime.openOptionsPage(() => {
-      // Send message to options page to open the specific rule
-      chrome.runtime.sendMessage({
-        type: 'imagus:editRule',
-        ruleId: ruleId,
+  if (!ruleId) return;
+
+  const btn = e.target;
+  const originalText = btn.textContent;
+  btn.textContent = 'Opening...';
+  btn.disabled = true;
+
+  const setPendingEdit = id =>
+    new Promise((resolve, reject) => {
+      chrome.storage.local.set({ pendingEditRuleId: id }, () => {
+        if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+        resolve();
       });
     });
+
+  try {
+    // 1. Persist intent so options can pick it up even if it needs to load
+    await setPendingEdit(ruleId);
+
+    // 2. Prefer focusing an existing options tab (and set hash for deep-link)
+    const targetUrl = `${chrome.runtime.getURL('options.html')}#edit=${encodeURIComponent(ruleId)}`;
+
+    // Find options tab in the CURRENT window first, then any window
+    let optionsTabs = await chrome.tabs.query({
+      url: chrome.runtime.getURL('options.html') + '*',
+      currentWindow: true,
+    });
+
+    if (optionsTabs.length === 0) {
+      optionsTabs = await chrome.tabs.query({
+        url: chrome.runtime.getURL('options.html') + '*',
+      });
+    }
+
+    let targetTabId = null;
+    if (optionsTabs && optionsTabs.length > 0) {
+      targetTabId = optionsTabs[0].id || null;
+      // Focus the window first if needed
+      if (optionsTabs[0].windowId) {
+        await chrome.windows
+          .update(optionsTabs[0].windowId, { focused: true })
+          .catch(() => {});
+      }
+      await chrome.tabs.update(targetTabId, { active: true, url: targetUrl });
+    } else {
+      const created = await chrome.tabs.create({
+        url: targetUrl,
+        active: true,
+      });
+      targetTabId = created?.id || null;
+    }
+
+    // 4. Ping the options page directly if we have a tab ID
+    if (targetTabId) {
+      setTimeout(() => {
+        chrome.tabs
+          .sendMessage(targetTabId, { type: 'imagus:editRule', ruleId })
+          .catch(() => {
+            // Ignore; storage/hash fallback covers cold-start cases
+          });
+      }, 400);
+    } else {
+      // Fallback to runtime message
+      setTimeout(() => {
+        chrome.runtime
+          .sendMessage({ type: 'imagus:editRule', ruleId })
+          .catch(() => {});
+      }, 400);
+    }
+
+    // Reset button after a delay (conceptually we've navigated away, but if user comes back)
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to handle edit rule:', err);
+    btn.textContent = 'Error';
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }, 2000);
   }
 }
 
@@ -290,7 +369,7 @@ async function init() {
       container.appendChild(createRuleElement(rule, matchCount, tab.url));
     }
 
-    setOutput(container.innerHTML);
+    setOutput(container);
   } catch (e) {
     setOutput(
       `<div class="no-rules">Error: ${escapeHtml(e?.message || String(e))}</div>`,
