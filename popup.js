@@ -343,12 +343,13 @@ async function init() {
     }
 
     // Use matched rules if found, otherwise fall back to showing domain-allowed rules
-    const rulesToDisplay = applicableRules.length > 0 ? applicableRules : allDomainAllowedRules.map(rule => ({ rule, matchCount: 0 }));
+    const rulesToDisplay =
+      applicableRules.length > 0
+        ? applicableRules
+        : allDomainAllowedRules.map(rule => ({ rule, matchCount: 0 }));
 
     if (rulesToDisplay.length === 0) {
-      setOutput(
-        '<div class="no-rules">No rules apply to this page.</div>',
-      );
+      setOutput('<div class="no-rules">No rules apply to this page.</div>');
       return;
     }
 
