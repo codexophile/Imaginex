@@ -13,6 +13,17 @@ import {
   getOAuthDebugInfo,
 } from './cloudSync.js';
 
+const CONSOLE_LOG_LEVELS = ['log', 'info', 'debug', 'trace'];
+const nativeConsoleMethods = Object.fromEntries(
+  CONSOLE_LOG_LEVELS.map(level => [level, console[level].bind(console)]),
+);
+
+function applyConsoleLogging(enabled) {
+  CONSOLE_LOG_LEVELS.forEach(level => {
+    console[level] = enabled ? nativeConsoleMethods[level] : () => {};
+  });
+}
+
 const SHORTCUT_FUNCTIONS = [
   {
     id: 'zoomFullResolution',
@@ -332,6 +343,7 @@ async function init() {
   els.zoom = $('zoom');
   els.enablePrefetch = $('enablePrefetch');
   els.enableAnimations = $('enableAnimations');
+  els.enableConsoleLogging = $('enableConsoleLogging');
   els.shortcutsList = $('shortcutsList');
   els.saveBtn = $('saveBtn');
   els.resetBtn = $('resetBtn');
@@ -376,6 +388,7 @@ async function init() {
 
   const s = await loadSettings();
   initial = s;
+  applyConsoleLogging(s.enableConsoleLogging !== false);
   bindValues(s);
   renderBuiltInRules(s.builtInRules || []);
   renderCustomRules(s.customRules || []);
@@ -405,6 +418,7 @@ function bindValues(s) {
   els.zoom.value = s.zoom;
   els.enablePrefetch.checked = !!s.enablePrefetch;
   els.enableAnimations.checked = !!s.enableAnimations;
+  els.enableConsoleLogging.checked = s.enableConsoleLogging !== false;
   renderShortcuts(s.shortcuts || {});
   setDirty(false);
 }
@@ -416,6 +430,7 @@ function gatherPatch() {
     zoom: Number(els.zoom.value),
     enablePrefetch: !!els.enablePrefetch.checked,
     enableAnimations: !!els.enableAnimations.checked,
+    enableConsoleLogging: !!els.enableConsoleLogging.checked,
   };
 }
 
@@ -442,16 +457,22 @@ function onChange() {
   const isDirtyNow = Object.keys(patch).some(k => patch[k] !== initial[k]);
   setDirty(isDirtyNow);
   if (isDirtyNow) scheduleAutoSave();
+  applyConsoleLogging(patch.enableConsoleLogging !== false);
 }
 
 function wireEvents() {
-  ['theme', 'hoverDelay', 'zoom', 'enablePrefetch', 'enableAnimations'].forEach(
-    id => {
-      const el = els[id];
-      const evt = el.type === 'checkbox' ? 'change' : 'input';
-      el.addEventListener(evt, onChange);
-    },
-  );
+  [
+    'theme',
+    'hoverDelay',
+    'zoom',
+    'enablePrefetch',
+    'enableAnimations',
+    'enableConsoleLogging',
+  ].forEach(id => {
+    const el = els[id];
+    const evt = el.type === 'checkbox' ? 'change' : 'input';
+    el.addEventListener(evt, onChange);
+  });
   els.saveBtn.addEventListener('click', () => doSave(false));
   els.resetBtn.addEventListener('click', resetDefaults);
 
@@ -568,6 +589,7 @@ async function resetDefaults() {
     hoverDelay: 300,
     zoom: 1.0,
     enablePrefetch: true,
+    enableConsoleLogging: true,
   });
   const latest = await loadSettings();
   initial = latest;
@@ -588,6 +610,7 @@ function onExternalChange(newSettings) {
     'zoom',
     'enablePrefetch',
     'enableAnimations',
+    'enableConsoleLogging',
   ]) {
     if (newSettings[k] !== initial[k]) {
       initial[k] = newSettings[k];
@@ -625,6 +648,7 @@ function onExternalChange(newSettings) {
     (changed || apiKeysChanged || customRulesChanged || builtInRulesChanged) &&
     !dirty
   ) {
+    applyConsoleLogging(initial.enableConsoleLogging !== false);
     bindValues(initial);
     renderApiKeys(initial.apiKeys || {});
     renderCustomRules(initial.customRules || []);

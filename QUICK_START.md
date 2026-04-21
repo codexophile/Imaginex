@@ -74,6 +74,7 @@ Click “Save Rule”. Use domain filters if it’s site‑specific (e.g., add `
 - Check console logs. Target Page issues appear as fetch/parse errors; user scripts as `imagus:userScriptError`.
 - Ensure you call `returnURL(...)` or `returnElement(...)` and guard for missing data if using Custom JS.
 - Confirm the rule is enabled in Options.
+- If you want those diagnostics visible, turn on Console Logging in the popup or in Options → Display.
 
 ## Tips
 

@@ -1,6 +1,28 @@
 (function () {
   'use strict';
 
+  const CONSOLE_LOG_LEVELS = ['log', 'info', 'debug', 'trace'];
+  const nativeConsoleMethods = Object.fromEntries(
+    CONSOLE_LOG_LEVELS.map(level => [level, console[level].bind(console)]),
+  );
+
+  function applyConsoleLogging(enabled) {
+    CONSOLE_LOG_LEVELS.forEach(level => {
+      console[level] = enabled ? nativeConsoleMethods[level] : () => {};
+    });
+  }
+
+  chrome.storage.local.get(['__settings_v1'], result => {
+    applyConsoleLogging(result.__settings_v1?.enableConsoleLogging !== false);
+  });
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes.__settings_v1) return;
+    applyConsoleLogging(
+      changes.__settings_v1.newValue?.enableConsoleLogging !== false,
+    );
+  });
+
   // Check if this script is running in the top frame
   const isTopFrame = window === window.top;
 

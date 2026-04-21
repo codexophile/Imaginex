@@ -157,6 +157,7 @@ Current settings:
 - **Zoom Factor** – placeholder for future manual scaling adjustments
 - **Prefetch Larger Image** – placeholder for future high‑res preloading
 - **Enable Animations** – toggle transitions for overlay
+- **Enable Console Logging** – show or hide diagnostic logs in DevTools
 - **Shortcuts** – assign up to two keyboard/mouse shortcuts per action (locked zoom toggle, zoom in/out)
 - **Built-in Rules** – enable/disable detection behaviors and site-specific CSS fixes; edit per‑rule Allowed/Excluded domains
 - **Custom Rules** – either no‑code Target Page extractors (URL Template + Selectors + Max URLs) or JavaScript rules; includes rule tester

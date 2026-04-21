@@ -11,6 +11,7 @@ const SETTINGS_DEFAULTS = Object.freeze({
   zoom: 1.0, // Placeholder for potential scaling of enlarged image
   enablePrefetch: true, // Future optimization: prefetch high-res images on hover intent
   enableAnimations: true, // Enable/disable image animations and transitions
+  enableConsoleLogging: true, // Toggle diagnostic logging to the console
   hoverDelay: 300, // Delay before showing enlarged image (ms)
   shortcuts: SHORTCUT_DEFAULTS,
   apiKeys: {}, // User-defined API keys for rules that fetch from external APIs
@@ -308,6 +309,7 @@ export async function updateSettings(patch) {
     'zoom',
     'enablePrefetch',
     'enableAnimations',
+    'enableConsoleLogging',
     'hoverDelay',
     'schemaVersion',
   ]);
@@ -444,6 +446,7 @@ export async function mergeCloudSettings(cloudSettings) {
     'zoom',
     'enablePrefetch',
     'enableAnimations',
+    'enableConsoleLogging',
     'hoverDelay',
     'schemaVersion',
   ];

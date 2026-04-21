@@ -1,4 +1,15 @@
-import { loadSettings } from './settings.js';
+import { loadSettings, updateSettings } from './settings.js';
+
+const CONSOLE_LOG_LEVELS = ['log', 'info', 'debug', 'trace'];
+const nativeConsoleMethods = Object.fromEntries(
+  CONSOLE_LOG_LEVELS.map(level => [level, console[level].bind(console)]),
+);
+
+function applyConsoleLogging(enabled) {
+  CONSOLE_LOG_LEVELS.forEach(level => {
+    console[level] = enabled ? nativeConsoleMethods[level] : () => {};
+  });
+}
 
 function $(id) {
   return document.getElementById(id);
@@ -294,6 +305,16 @@ async function init() {
     }
 
     const s = await loadSettings();
+    applyConsoleLogging(s.enableConsoleLogging !== false);
+    const consoleToggle = $('enableConsoleLogging');
+    if (consoleToggle) {
+      consoleToggle.checked = s.enableConsoleLogging !== false;
+      consoleToggle.addEventListener('change', async e => {
+        const enabled = e.target.checked;
+        applyConsoleLogging(enabled);
+        await updateSettings({ enableConsoleLogging: enabled }).catch(() => {});
+      });
+    }
     const rules = s.customRules || [];
 
     if (rules.length === 0) {
