@@ -316,6 +316,7 @@ async function init() {
 
     // Check each rule for matches
     const applicableRules = [];
+    const allDomainAllowedRules = []; // Fallback: rules that pass domain filter
 
     for (const rule of rules) {
       if (!rule || !rule.selector) continue;
@@ -330,6 +331,8 @@ async function init() {
       // Skip rules that are domain-filtered out
       if (!matchesDomainFilter) continue;
 
+      allDomainAllowedRules.push(rule);
+
       // Check for matches on the page
       const matchCount = await checkRuleMatches(tab, rule);
 
@@ -339,15 +342,18 @@ async function init() {
       }
     }
 
-    if (applicableRules.length === 0) {
+    // Use matched rules if found, otherwise fall back to showing domain-allowed rules
+    const rulesToDisplay = applicableRules.length > 0 ? applicableRules : allDomainAllowedRules.map(rule => ({ rule, matchCount: 0 }));
+
+    if (rulesToDisplay.length === 0) {
       setOutput(
-        '<div class="no-rules">No rules match elements on this page.</div>',
+        '<div class="no-rules">No rules apply to this page.</div>',
       );
       return;
     }
 
     // Sort: enabled first, then by match count
-    applicableRules.sort((a, b) => {
+    rulesToDisplay.sort((a, b) => {
       if (a.rule.enabled !== b.rule.enabled) {
         return a.rule.enabled ? -1 : 1;
       }
@@ -356,7 +362,7 @@ async function init() {
 
     // Display results
     const container = document.createElement('div');
-    for (const { rule, matchCount } of applicableRules) {
+    for (const { rule, matchCount } of rulesToDisplay) {
       container.appendChild(createRuleElement(rule, matchCount, tab.url));
     }
 
