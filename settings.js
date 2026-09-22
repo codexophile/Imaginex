@@ -49,103 +49,6 @@ const SETTINGS_DEFAULTS = Object.freeze({
       description:
         'Display background-image CSS properties as enlargeable images',
     },
-
-    // CSS Pointer-Events Fixes
-    {
-      id: 'css-fix-pointer-events',
-      name: 'Pointer-Events CSS Fixes',
-      enabled: true,
-      category: 'css-fixes',
-      description:
-        'Enable the built-in CSS fixes that set pointer-events: none on blocking overlay elements',
-    },
-    {
-      id: 'css-fix-instagram',
-      name: 'Instagram Overlay Fix',
-      enabled: true,
-      category: 'css-fixes',
-      allowDomains: ['instagram.com', '*.instagram.com'],
-      excludeDomains: [],
-      description:
-        'Disable pointer-events on Instagram overlay elements that block image interaction',
-    },
-    {
-      id: 'css-fix-youtube',
-      name: 'YouTube Overlay Fix',
-      enabled: true,
-      category: 'css-fixes',
-      allowDomains: ['youtube.com', '*.youtube.com', 'youtu.be'],
-      excludeDomains: [],
-      description:
-        'Disable pointer-events on YouTube thumbnail overlays that intercept hover',
-    },
-    {
-      id: 'css-fix-pinterest',
-      name: 'Pinterest Overlay Fix',
-      enabled: true,
-      category: 'css-fixes',
-      allowDomains: ['pinterest.com', '*.pinterest.com'],
-      excludeDomains: [],
-      description: 'Disable pointer-events on Pinterest overlay elements',
-    },
-    {
-      id: 'css-fix-twitter',
-      name: 'Twitter/X Overlay Fix',
-      enabled: true,
-      category: 'css-fixes',
-      allowDomains: ['twitter.com', '*.twitter.com', 'x.com', '*.x.com'],
-      excludeDomains: [],
-      description: 'Disable pointer-events on Twitter/X overlay elements',
-    },
-    {
-      id: 'css-fix-facebook',
-      name: 'Facebook/Meta Overlay Fix',
-      enabled: true,
-      category: 'css-fixes',
-      allowDomains: [
-        'facebook.com',
-        '*.facebook.com',
-        'meta.com',
-        '*.meta.com',
-      ],
-      excludeDomains: [],
-      description:
-        'Disable pointer-events on Facebook/Meta presentation overlays',
-    },
-    {
-      id: 'css-fix-reddit',
-      name: 'Reddit Overlay Fix',
-      enabled: true,
-      category: 'css-fixes',
-      allowDomains: ['reddit.com', '*.reddit.com'],
-      excludeDomains: [],
-      description: 'Disable pointer-events on Reddit image overlays',
-    },
-    {
-      id: 'css-fix-tumblr',
-      name: 'Tumblr Overlay Fix',
-      enabled: true,
-      category: 'css-fixes',
-      allowDomains: ['tumblr.com', '*.tumblr.com'],
-      excludeDomains: [],
-      description: 'Disable pointer-events on Tumblr image wrapper overlays',
-    },
-    {
-      id: 'css-fix-generic-overlays',
-      name: 'Generic Overlay Patterns',
-      enabled: true,
-      category: 'css-fixes',
-      description:
-        'Disable pointer-events on common overlay patterns (empty positioned elements)',
-    },
-    {
-      id: 'css-fix-generic-classes',
-      name: 'Generic Overlay Classes',
-      enabled: true,
-      category: 'css-fixes',
-      description:
-        'Disable pointer-events on elements with common overlay class names',
-    },
   ],
   customRules: [
     // Custom rules for finding higher-quality images
@@ -516,10 +419,14 @@ export async function mergeCloudSettings(cloudSettings) {
 
   // Merge builtInRules per id with timestamps
   const localBuiltMap = Object.fromEntries(
-    (local.builtInRules || []).map(rule => [rule.id, rule]),
+    (local.builtInRules || [])
+      .filter(rule => rule.category !== 'css-fixes')
+      .map(rule => [rule.id, rule]),
   );
   const cloudBuiltMap = Object.fromEntries(
-    (cloud.builtInRules || []).map(rule => [rule.id, rule]),
+    (cloud.builtInRules || [])
+      .filter(rule => rule.category !== 'css-fixes')
+      .map(rule => [rule.id, rule]),
   );
   const { result: mergedBuiltMap, meta: mergedBuiltMeta } = mergeKeyed({
     localMap: localBuiltMap,

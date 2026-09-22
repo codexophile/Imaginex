@@ -159,7 +159,7 @@ Current settings:
 - **Enable Animations** – toggle transitions for overlay
 - **Enable Console Logging** – show or hide diagnostic logs in DevTools
 - **Shortcuts** – assign up to two keyboard/mouse shortcuts per action (locked zoom toggle, zoom in/out)
-- **Built-in Rules** – enable/disable detection behaviors and site-specific CSS fixes; edit per‑rule Allowed/Excluded domains
+- **Built-in Rules** – enable/disable detection behaviors; edit per-rule Allowed/Excluded domains
 - **Custom Rules** – either no‑code Target Page extractors (URL Template + Selectors + Max URLs) or JavaScript rules; includes rule tester
 - **Cloud Sync** – one-button sync to Google Drive appData with timestamp-based conflict resolution (newest edit wins)
 

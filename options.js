@@ -359,7 +359,6 @@ async function init() {
 
   // Built-in rules elements
   els.builtInRulesDetection = $('builtInRulesDetection');
-  els.builtInRulesCssFixes = $('builtInRulesCssFixes');
 
   // Custom rules elements
   els.customRulesList = $('customRulesList');
@@ -692,10 +691,8 @@ function renderApiKeys(apiKeys) {
 // Built-in Rules Management
 function renderBuiltInRules(rules) {
   const detectionRules = rules.filter(r => r.category === 'detection');
-  const cssFixRules = rules.filter(r => r.category === 'css-fixes');
 
   renderBuiltInRulesCategory(els.builtInRulesDetection, detectionRules);
-  renderBuiltInRulesCategory(els.builtInRulesCssFixes, cssFixRules);
 }
 
 function renderBuiltInRulesCategory(container, rules) {

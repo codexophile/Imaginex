@@ -40,70 +40,6 @@ These rules detect and handle various element types for image enlargement:
 - **Console Log**: `[Built-in Rule: CSS Background Images] Detected background-image:`
 - **Use Case**: Elements styled with `background-image: url(...)`
 
-### CSS Pointer-Events Fixes
-
-These rules disable pointer-events on overlay elements that block hover interactions on various websites:
-
-#### Pointer-Events CSS Fixes
-
-- **ID**: `css-fix-pointer-events`
-- **Description**: Master toggle for all built-in CSS fixes that set `pointer-events: none`
-- **Use Case**: Disable this rule to turn off every site-specific pointer-events fix at once
-
-#### 5. Instagram Overlay Fix
-
-- **ID**: `css-fix-instagram`
-- **Target**: `._aagw` selector
-- **Description**: Disables pointer-events on Instagram overlay elements
-
-#### 6. YouTube Overlay Fix
-
-- **ID**: `css-fix-youtube`
-- **Target**: YouTube thumbnail overlays (`ytd-thumbnail [class*="overlay"]`, etc.)
-- **Description**: Disables pointer-events on YouTube thumbnail overlays that intercept hover
-
-#### 7. Pinterest Overlay Fix
-
-- **ID**: `css-fix-pinterest`
-- **Target**: `div[data-test-id*="overlay"]:empty`
-- **Description**: Disables pointer-events on Pinterest overlay elements
-
-#### 8. Twitter/X Overlay Fix
-
-- **ID**: `css-fix-twitter`
-- **Target**: `div[data-testid*="overlay"]:empty`
-- **Description**: Disables pointer-events on Twitter/X overlay elements
-
-#### 9. Facebook/Meta Overlay Fix
-
-- **ID**: `css-fix-facebook`
-- **Target**: `div[role="presentation"]:empty`
-- **Description**: Disables pointer-events on Facebook/Meta presentation overlays
-
-#### 10. Reddit Overlay Fix
-
-- **ID**: `css-fix-reddit`
-- **Target**: `._1JmnMJclrTwTPpAip5U_Hm:empty`
-- **Description**: Disables pointer-events on Reddit image overlays
-
-#### 11. Tumblr Overlay Fix
-
-- **ID**: `css-fix-tumblr`
-- **Target**: `.post-content .image-wrapper > div:empty`
-- **Description**: Disables pointer-events on Tumblr image wrapper overlays
-
-#### 12. Generic Overlay Patterns
-
-- **ID**: `css-fix-generic-overlays`
-- **Target**: Positioned empty elements (`[style*="position: absolute"]:empty`, etc.)
-- **Description**: Disables pointer-events on common overlay patterns
-
-#### 13. Generic Overlay Classes
-
-- **ID**: `css-fix-generic-classes`
-- **Target**: `.overlay:empty`, `.image-overlay:empty`, etc.
-- **Description**: Disables pointer-events on elements with common overlay class names
-
 ## How It Works
 
 ### Settings Storage
@@ -138,9 +74,7 @@ builtInRules: [
 The options page has a dedicated "Built-in Rules" section with two subsections:
 
 1. **Element Detection Patterns**: Toggle detection behaviors
-2. **Site-Specific CSS Fixes**: Toggle CSS pointer-events fixes per site
-
-Each rule shows:
+   Each rule shows:
 
 - Checkbox to enable/disable
 - Name and description
@@ -186,7 +120,7 @@ To add a new built-in rule:
      id: 'my-new-rule',
      name: 'My New Rule',
      enabled: true,
-     category: 'detection', // or 'css-fixes'
+    category: 'detection'
      description: 'What this rule does',
      allowDomains: [], // optional
      excludeDomains: [] // optional
@@ -238,6 +172,5 @@ All previously hardcoded patterns have been identified and converted:
 - ✅ Parent anchor preference
 - ✅ Direct anchor image links
 - ✅ Background-image CSS detection
-- ✅ All site-specific CSS pointer-events fixes
 
 No functionality was lost in the refactoring—all behaviors are preserved and now controllable.

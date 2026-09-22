@@ -36,7 +36,6 @@
   let ENABLE_ANIMATIONS = true; // default; will be overridden by settings
   let customRules = []; // Custom rules for finding higher-quality images
   let builtInRulesMap = new Map(); // Built-in rules (id -> full rule object)
-  let allBuiltInRules = []; // Store all built-in rules for domain filtering
 
   // Locked zoom mode state
   let lockedZoomMode = false;
@@ -702,13 +701,9 @@
     }
     if (Array.isArray(raw.builtInRules)) {
       const hostname = window.location.hostname;
-      // Store full rule objects for domain filtering
-      allBuiltInRules = raw.builtInRules || [];
       // Create map: id -> rule object
       builtInRulesMap = new Map(raw.builtInRules.map(r => [r.id, r]));
       console.log('Loaded built-in rules:', builtInRulesMap.size, 'rules');
-      // Reapply CSS fixes when built-in rules change
-      reapplyCssFixes();
     }
     // Load shortcuts from settings
     if (raw.shortcuts && typeof raw.shortcuts === 'object') {
@@ -2591,9 +2586,6 @@
 
   // Initialize the extension
   function init() {
-    // Inject universal CSS fixes for overlay elements that block image interaction
-    injectUniversalFixes();
-
     // Use event delegation for better performance
     document.addEventListener(
       'mouseenter',
@@ -3227,119 +3219,6 @@
         }
       }
     }, HOVER_DELAY);
-  }
-
-  // Inject universal CSS fixes for blocking overlay elements
-  function injectUniversalFixes() {
-    const existing = document.getElementById('imagus-css-fixes');
-    if (existing) existing.remove();
-
-    const pointerEventsRule = builtInRulesMap.get('css-fix-pointer-events');
-    if (pointerEventsRule && !isRuleEnabled('css-fix-pointer-events')) {
-      return;
-    }
-
-    const style = document.createElement('style');
-    style.id = 'imagus-css-fixes';
-
-    let cssRules = [];
-
-    // Instagram overlays
-    if (isRuleEnabled('css-fix-instagram')) {
-      cssRules.push(`/* Instagram overlays */
-      ._aagw {
-        /* pointer-events: none !important; */
-      }`);
-    }
-
-    // Common overlay patterns
-    if (isRuleEnabled('css-fix-generic-overlays')) {
-      cssRules.push(`/* Common overlay patterns that block image interaction */
-      [style*="position: absolute"][style*="inset: 0"]:not(img):not(video):empty {
-        /* pointer-events: none !important; */
-      }
-
-      /* Additional common patterns for empty overlays */
-      div[style*="position: absolute"]:empty,
-      div[style*="position: fixed"]:empty {
-        /* pointer-events: none !important; */
-      }`);
-    }
-
-    // Pinterest overlays
-    if (isRuleEnabled('css-fix-pinterest')) {
-      cssRules.push(`/* Pinterest overlays */
-      div[data-test-id*="overlay"]:empty {
-        /* pointer-events: none !important; */
-      }`);
-    }
-
-    // Twitter/X overlays
-    if (isRuleEnabled('css-fix-twitter')) {
-      cssRules.push(`/* Twitter/X overlays */
-      div[data-testid*="overlay"]:empty {
-        /* /* /* /* pointer-events: none !important; */ */ */ */
-      }`);
-    }
-
-    // Facebook/Meta overlays
-    if (isRuleEnabled('css-fix-facebook')) {
-      cssRules.push(`/* Facebook/Meta overlays */
-      div[role="presentation"]:empty {
-        pointer-events: none !important;
-      }`);
-    }
-
-    // Generic overlay class patterns
-    if (isRuleEnabled('css-fix-generic-classes')) {
-      cssRules.push(`/* Generic overlay class patterns */
-      .overlay:empty,
-      .image-overlay:empty,
-      .hover-overlay:empty,
-      .transparent-overlay:empty,
-      .block-overlay:empty {
-        /* pointer-events: none !important; */
-      }`);
-    }
-
-    // Tumblr image overlays
-    if (isRuleEnabled('css-fix-tumblr')) {
-      cssRules.push(`/* Tumblr image overlays */
-      .post-content .image-wrapper > div:empty {
-        /* pointer-events: none !important; */
-      }`);
-    }
-
-    // Reddit image overlays
-    if (isRuleEnabled('css-fix-reddit')) {
-      cssRules.push(`/* Reddit image overlays */
-      ._1JmnMJclrTwTPpAip5U_Hm:empty {
-        /* pointer-events: none !important; */
-      }`);
-    }
-
-    // YouTube overlays
-    if (isRuleEnabled('css-fix-youtube')) {
-      cssRules.push(`/* YouTube overlays that often intercept hover */
-      ytd-thumbnail [class*="overlay"],
-      ytd-thumbnail-overlay-time-status-renderer,
-      ytd-thumbnail-overlay-toggle-button-renderer,
-      ytd-thumbnail-overlay-now-playing-renderer {
-        /* /* pointer-events: none !important; */ */
-      }`);
-    }
-
-    if (cssRules.length === 0) return;
-
-    style.textContent = cssRules.join('\n\n');
-
-    // Insert at the beginning of head to ensure lower specificity doesn't override
-    document.head.insertBefore(style, document.head.firstChild);
-  }
-
-  // Reapply CSS fixes when settings change
-  function reapplyCssFixes() {
-    injectUniversalFixes();
   }
 
   // Message handler for rule testing from options page
