@@ -31,6 +31,8 @@ Option B — Custom JavaScript:
 
 - Provide a snippet that ultimately calls `returnURL(urlOrArray)` or `returnElement(el)`
 
+Before you test Custom JavaScript rules, enable <em>Allow user scripts</em> for this extension in your browser's extension settings.
+
 Example userScript:
 
 ```js

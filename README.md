@@ -170,6 +170,8 @@ Custom rules allow you to extract higher-quality images from elements that don't
 - Configure a Target Page extractor (follow `{href}` and select images with CSS like `img | srcsetBest`), or
 - Provide a `userScript` that runs in a sandboxed page context and calls `returnURL(url)` or `returnElement(el)`.
 
+Before Custom JavaScript rules will run, open the extension details page and enable <em>Allow user scripts</em> for this extension.
+
 Rules can return an array of URLs to enable gallery navigation.
 
 Each rule consists of:
