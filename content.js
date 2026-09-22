@@ -3231,6 +3231,14 @@
 
   // Inject universal CSS fixes for blocking overlay elements
   function injectUniversalFixes() {
+    const existing = document.getElementById('imagus-css-fixes');
+    if (existing) existing.remove();
+
+    const pointerEventsRule = builtInRulesMap.get('css-fix-pointer-events');
+    if (pointerEventsRule && !isRuleEnabled('css-fix-pointer-events')) {
+      return;
+    }
+
     const style = document.createElement('style');
     style.id = 'imagus-css-fixes';
 
@@ -3240,7 +3248,7 @@
     if (isRuleEnabled('css-fix-instagram')) {
       cssRules.push(`/* Instagram overlays */
       ._aagw {
-        pointer-events: none !important;
+        /* pointer-events: none !important; */
       }`);
     }
 
@@ -3248,13 +3256,13 @@
     if (isRuleEnabled('css-fix-generic-overlays')) {
       cssRules.push(`/* Common overlay patterns that block image interaction */
       [style*="position: absolute"][style*="inset: 0"]:not(img):not(video):empty {
-        pointer-events: none !important;
+        /* pointer-events: none !important; */
       }
 
       /* Additional common patterns for empty overlays */
       div[style*="position: absolute"]:empty,
       div[style*="position: fixed"]:empty {
-        pointer-events: none !important;
+        /* pointer-events: none !important; */
       }`);
     }
 
@@ -3262,7 +3270,7 @@
     if (isRuleEnabled('css-fix-pinterest')) {
       cssRules.push(`/* Pinterest overlays */
       div[data-test-id*="overlay"]:empty {
-        pointer-events: none !important;
+        /* pointer-events: none !important; */
       }`);
     }
 
@@ -3270,7 +3278,7 @@
     if (isRuleEnabled('css-fix-twitter')) {
       cssRules.push(`/* Twitter/X overlays */
       div[data-testid*="overlay"]:empty {
-        pointer-events: none !important;
+        /* /* /* /* pointer-events: none !important; */ */ */ */
       }`);
     }
 
@@ -3290,7 +3298,7 @@
       .hover-overlay:empty,
       .transparent-overlay:empty,
       .block-overlay:empty {
-        pointer-events: none !important;
+        /* pointer-events: none !important; */
       }`);
     }
 
@@ -3298,7 +3306,7 @@
     if (isRuleEnabled('css-fix-tumblr')) {
       cssRules.push(`/* Tumblr image overlays */
       .post-content .image-wrapper > div:empty {
-        pointer-events: none !important;
+        /* pointer-events: none !important; */
       }`);
     }
 
@@ -3306,7 +3314,7 @@
     if (isRuleEnabled('css-fix-reddit')) {
       cssRules.push(`/* Reddit image overlays */
       ._1JmnMJclrTwTPpAip5U_Hm:empty {
-        pointer-events: none !important;
+        /* pointer-events: none !important; */
       }`);
     }
 
@@ -3317,9 +3325,11 @@
       ytd-thumbnail-overlay-time-status-renderer,
       ytd-thumbnail-overlay-toggle-button-renderer,
       ytd-thumbnail-overlay-now-playing-renderer {
-        pointer-events: none !important;
+        /* /* pointer-events: none !important; */ */
       }`);
     }
+
+    if (cssRules.length === 0) return;
 
     style.textContent = cssRules.join('\n\n');
 
@@ -3329,10 +3339,6 @@
 
   // Reapply CSS fixes when settings change
   function reapplyCssFixes() {
-    const existing = document.getElementById('imagus-css-fixes');
-    if (existing) {
-      existing.remove();
-    }
     injectUniversalFixes();
   }
 

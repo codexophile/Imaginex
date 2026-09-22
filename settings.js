@@ -50,7 +50,15 @@ const SETTINGS_DEFAULTS = Object.freeze({
         'Display background-image CSS properties as enlargeable images',
     },
 
-    // CSS Pointer-Events Fixes (Site-Specific)
+    // CSS Pointer-Events Fixes
+    {
+      id: 'css-fix-pointer-events',
+      name: 'Pointer-Events CSS Fixes',
+      enabled: true,
+      category: 'css-fixes',
+      description:
+        'Enable the built-in CSS fixes that set pointer-events: none on blocking overlay elements',
+    },
     {
       id: 'css-fix-instagram',
       name: 'Instagram Overlay Fix',

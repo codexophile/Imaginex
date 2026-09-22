@@ -44,6 +44,12 @@ These rules detect and handle various element types for image enlargement:
 
 These rules disable pointer-events on overlay elements that block hover interactions on various websites:
 
+#### Pointer-Events CSS Fixes
+
+- **ID**: `css-fix-pointer-events`
+- **Description**: Master toggle for all built-in CSS fixes that set `pointer-events: none`
+- **Use Case**: Disable this rule to turn off every site-specific pointer-events fix at once
+
 #### 5. Instagram Overlay Fix
 
 - **ID**: `css-fix-instagram`
